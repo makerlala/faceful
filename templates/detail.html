@@ -1,0 +1,124 @@
+<!DOCTYPE HTML>
+<!--
+	Radius by TEMPLATED
+	templated.co @templatedco
+	Released for free under the Creative Commons Attribution 3.0 license (templated.co/license)
+-->
+<html>
+<head>
+<title>Photo details</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="stylesheet" href="static/assets/css/main.css" />
+<!-- Scripts -->
+<script src="static/assets/js/jquery.min.js"></script>
+<script src="static/assets/js/skel.min.js"></script>
+<script src="static/assets/js/util.js"></script>
+<script src="static/assets/js/main.js"></script>
+<script src="static/assets/js/gallery.js"></script>
+</head>
+<body>
+
+	<!-- Header -->
+	<header id="header" class="preview">
+		<div class="inner">
+			<button onclick="goHome()" class="info fa fa-home"></button>
+		</div>
+	</header>
+
+	<!-- Main -->
+	<div id="preview">
+		<div class="inner">
+			<div class="content">
+				<div style="text-align: center">
+					{% if entity.is_video %}
+					<video width="{{ width }}" controls="controls">
+						<source src="{{ entity.path }}" />
+						Your browser does not support the video tag.
+					</video>
+					{% else %} 
+					<img src="{{ imgpath }}" alt="{{ entity.name }}" /> 
+					{% endif %}
+				</div>
+				<header>
+					<h2>Labels</h2>
+				</header>
+				{% for box in boxes %}
+					<p>Box {{ loop.index }}: {{ box[6] }}</p>
+				{% if box[6] == "face" %}
+					<form action="/updatelabel" method="post" >
+						<input type="hidden" name="pathid" value="{{ entity.en_id }}" />
+						<input type="hidden" name="boxid" value="{{ box[0] }}" />
+						<input type="text" name="label" placeholder="{{ box[7] }}"/>
+						<input class="redbutton" type="submit" value="Update" />
+					</form>
+				{% endif %}
+				{% endfor %}
+				<header>
+					<h2>Story</h2>
+				</header>
+				{% if stories.count(stories) == 0 %}
+				<form action="/addstory" method="post">
+					<textarea rows="8" cols="40" placeholder="Put your story here."
+						name="story_text"></textarea>
+					<input class="redbutton" type="submit" value="Add story" />
+				</form>
+				{% else %} 
+				{% for story in stories %}
+					<p>{{ story.content }}</p>
+				{% endfor %} 
+				{% endif %}
+			</div>
+		</div>
+		{% if entity.prev_id != -1 %} <a
+			href="/detail?path_id={{ entity.prev_id }}" class="nav previous"><span
+			class="fa fa-chevron-left"></span></a> {% endif %} {% if entity.next_id
+		!= -1 %} <a href="/detail?path_id={{ entity.next_id }}"
+			class="nav next"><span class="fa fa-chevron-right"></span></a> {%
+		endif %}
+	</div>
+
+	<!-- Footer -->
+	<!-- Footer -->
+	<footer id="footer">
+		<a href="#" class="info fa fa-info-circle"><span>About</span></a>
+		<div class="inner">
+			<div class="content">
+				<h3>FaceGaPh - Face recognition in a Gallery of Photos</h3>
+				<p>This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.</p>
+
+				<p>This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.</p>
+			</div>
+			<div class="copyright">
+				<h3>Follow us</h3>
+				<ul class="icons">
+					<li><a href="https://github.com/makerlala" class="icon fa-github"><span
+							class="label">Github</span></a></li>
+					<li><a href="http://makerlala.com/" class="icon fa-globe"><span
+							class="label">Web</span></a></li>
+					<li><a href="http://makerlala.com/blog" class="icon fa-wordpress"><span
+							class="label">Blog</span></a></li>
+				</ul>
+				Design: <a href="https://templated.co">TEMPLATED</a>. Images: <a
+					href="https://unsplash.com/">Unsplash</a>.
+				<div>
+					Icons made by <a
+						href="https://www.flaticon.com/authors/gregor-cresnar"
+						title="Gregor Cresnar">Gregor Cresnar</a> from <a
+						href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a>
+					is licensed by <a
+						href="http://creativecommons.org/licenses/by/3.0/"
+						title="Creative Commons BY 3.0" target="_blank">CC 3.0 BY</a>
+				</div>
+			</div>
+		</div>
+	</footer>
+
+</body>
+</html>

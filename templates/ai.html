@@ -1,0 +1,116 @@
+<!DOCTYPE HTML>
+<!--
+	Radius by TEMPLATED
+	templated.co @templatedco
+	Released for free under the Creative Commons Attribution 3.0 license (templated.co/license)
+-->
+<html>
+<head>
+<title>AI Tasks</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="stylesheet" href="static/assets/css/main.css" />
+<!-- Scripts -->
+<script src="static/assets/js/jquery.min.js"></script>
+<script src="static/assets/js/skel.min.js"></script>
+<script src="static/assets/js/util.js"></script>
+<script src="static/assets/js/main.js"></script>
+<script src="static/assets/js/gallery.js"></script>
+</head>
+<body>
+
+	<!-- Header -->
+	<header id="header" class="preview">
+		<div class="inner">
+			<button onclick="goHome()" class="info fa fa-home"></button>
+		</div>
+
+		<div class="inner">
+			<button onclick="showSettings()" class="info fa fa-cog"></button>
+		</div>
+	</header>
+
+	<!-- Main -->
+	<div id="preview">
+		<div class="inner">
+			<div class="content">
+				<header>
+					<h2>Object Detection</h2>
+				</header>
+				<div class="columns">
+				{% for key in marked_objects.keys() %}
+					<p><a href="/search?query={{ key }}">{{ key }}</a>: {{ marked_objects[key]|length }} photos</p>
+				{% endfor %}
+				</div>
+				<header>
+					<h2>Face Recognition Training</h2>
+				</header>
+				{% if marked_faces.keys()|length == 0 %}
+					<p>You have no labeled faces. Please label at least {{ faces_threshold }} photos for each person and return to this page.</p>
+				{% else %}
+					<p>You have marked the following persons in your photos:</p>
+				{% for key in marked_faces.keys() %}
+					<p><a href="/search?query=face%20{{ key }}">{{ key }}</a>: {{ marked_faces[key]|length }} photos</p>
+				{% endfor %}
+				{% if training_in_progress %}
+					<p>Training in progress</p>
+					<div class="loader"></div>
+				{% elif can_train %}
+					<form action="/train" method="post">
+					<input class="redbutton" type="submit" value="Start training" />
+					</form>
+				{% else %}
+					<p>Please label at least {{ faces_threshold }} photos for each person and return to this page.</p>
+				{% endif %}
+				{% endif %}
+				<header>
+					<h2>Face Recognition</h2>
+				</header>
+			</div>
+		</div>
+	</div>
+
+	<!-- Footer -->
+	<!-- Footer -->
+	<footer id="footer">
+		<a href="#" class="info fa fa-info-circle"><span>About</span></a>
+		<div class="inner">
+			<div class="content">
+				<h3>FaceGaPh - Face recognition in a Gallery of Photos</h3>
+				<p>This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.</p>
+
+				<p>This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.</p>
+			</div>
+			<div class="copyright">
+				<h3>Follow us</h3>
+				<ul class="icons">
+					<li><a href="https://github.com/makerlala" class="icon fa-github"><span
+							class="label">Github</span></a></li>
+					<li><a href="http://makerlala.com/" class="icon fa-globe"><span
+							class="label">Web</span></a></li>
+					<li><a href="http://makerlala.com/blog" class="icon fa-wordpress"><span
+							class="label">Blog</span></a></li>
+				</ul>
+				Design: <a href="https://templated.co">TEMPLATED</a>. Images: <a
+					href="https://unsplash.com/">Unsplash</a>.
+				<div>
+					Icons made by <a
+						href="https://www.flaticon.com/authors/gregor-cresnar"
+						title="Gregor Cresnar">Gregor Cresnar</a> from <a
+						href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a>
+					is licensed by <a
+						href="http://creativecommons.org/licenses/by/3.0/"
+						title="Creative Commons BY 3.0" target="_blank">CC 3.0 BY</a>
+				</div>
+			</div>
+		</div>
+	</footer>
+
+</body>
+</html>
