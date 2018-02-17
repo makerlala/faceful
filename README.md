@@ -32,11 +32,11 @@ Start the Flask server:
 ./start-flask.sh
 ```
 
-If everything is ok, open a browser and go to "localhost:8000"
+If everything is ok, open a browser and go to http://localhost:8000
 
 Enjoy!
 
 ## Credits
-Webpage template Radius is created by TEMPLATED (emplated.co @templatedco) and released for free under the Creative Commons Attribution 3.0 license (templated.co/license)
+Webpage template Radius is created by TEMPLATED (https://templated.co/radius) and released for free under the Creative Commons Attribution 3.0 license (https://templated.co/license)
 
 Parts of the code are inspired or copied from facenet project  by David Sandberg which is licensed under MIT licence (see https://github.com/davidsandberg/facenet).
