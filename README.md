@@ -3,6 +3,13 @@ A Photo Gallery with Face Recognition
 
 ## Get started
 
+This gallery has two main components, (i) a web server based on Python Flask and (ii) an AI image processing server running on Tensorflow. 
+These two components can run on the same machine or on different machines. If you run everything on a single machine, follow all these steps.
+If you run on two separate machines, run the install step on the machine that acts as object and face detection server. We recommend that you 
+use a machine with GPU (e.g. a server with GPU or an Nvidia Jetson TX1/TX2) for this.
+
+### Install
+
 Create a folder where all related code and projects will be downloaded, then clone this repository. For example, in your home directory:
 ```
 cd ~
@@ -49,12 +56,13 @@ my-smart-gallery
 	tensorflow-face-detection
 ```
 
-Start the Flask server:
+### Run webserver
+If you run both components on the same machine, just start the Flask server. Else, on the machine that acts like webserver, clone this repository, set the path to your photos, and set the facedet server IP and port. Then start Flask server:
 ```
 ./start-flask.sh
 ```
 
-If everything is ok, open a browser and go to http://localhost:8000
+If everything is ok, open a browser and go to http://localhost:8000 or http://<webserver>:8000
 
 Enjoy!
 
