@@ -27,6 +27,28 @@ else
 ./install.sh
 ```
 
+After installation, your folder structure should be:
+```
+my-smart-gallery
+	faceful
+		data
+		scripts
+		src
+		static
+			assests
+			gallery -> <your photos path>
+			img
+		templates
+	facenet
+	models
+		20170512-110547
+		lfw
+		ssd_mobilenet_v1_coco_2017_11_17
+	tensorflow
+		models
+	tensorflow-face-detection
+```
+
 Start the Flask server:
 ```
 ./start-flask.sh
