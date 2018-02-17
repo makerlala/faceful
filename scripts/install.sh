@@ -101,11 +101,11 @@ if ! [ -f models/$FACENET_MODEL ]; then
 fi
 if ! [ -f models/$OBJECTDET_MODEL ]; then
 	cd models
-	if ! [ -f $FACENET_LFW_ARCHIVE ]; then
+	if ! [ -f $OBJECTDET_ARCHIVE ]; then
 		wget $OBJECTDET_URL
 	fi
 	tar xf $OBJECTDET_ARCHIVE
-	if ! [ -d $OBJECTDET_MODEL ]; then
+	if ! [ -f $OBJECTDET_MODEL ]; then
 		echo "Download and unzip object detection model in models folder, and run this script again!"
 		echo "Object detection model URL: $OBJECTDET_URL"
 		exit
