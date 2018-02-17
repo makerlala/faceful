@@ -51,12 +51,12 @@ fi
 # Configure settings
 if ! [ -f settings.conf ]; then
 	cp settings.conf.template settings.conf
-	echo "Please add the path to your photos in 'data/settings.conf' and run this script again!"
+	echo "Please add the path to your photos in 'settings.conf' and run this script again!"
 	exit
 else
 	PHOTOS_PATH=`cat settings.conf | grep "path =" | tr -d ' ' | cut -d '=' -f 2`
 	echo "Path to your photos: $PHOTOS_PATH"
-	if ! [ -d $PHOTOS_PATH ]; then
+	if ! [ -d "$PHOTOS_PATH" ]; then
 		echo "Photos path is not a folder. Please reconfigure your path in 'data/settings.conf' and run this script again!"
 		exit
 	fi
