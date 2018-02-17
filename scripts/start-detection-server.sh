@@ -2,11 +2,9 @@
 #
 # Copyright (c) 2018 - Dumi Loghin (dumi@makerlala.com)
 #
-# This file is part of FaceGaPh - an open source smart photo gallery with 
-# object and face recognition. Parts of this code interacts and has been
-# inspired by facenet project by David Sandberg which is licensed under
-# MIT licence (see https://github.com/davidsandberg/facenet).
-
+# This file is part of faceful - an open source smart photo gallery with 
+# object and face recognition.
+#
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or

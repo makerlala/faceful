@@ -2,11 +2,9 @@
 #
 # Copyright (c) 2018 - Dumi Loghin (dumi@makerlala.com)
 #
-# This file is part of FaceGaPh - an open source smart photo gallery with 
-# object and face recognition. Parts of this code interacts and has been
-# inspired by facenet project by David Sandberg which is licensed under
-# MIT licence (see https://github.com/davidsandberg/facenet).
-
+# This file is part of faceful - an open source smart photo gallery with 
+# object and face recognition.
+#
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -50,29 +48,29 @@ if [ $# -gt 0 ] && [ $1 == "-cpu" ]; then
 	echo "Using tensorflow CPU only"
 fi
 
-# go to facegaph root, supposing we are in 'scripts'
-cd ..
-
-# Configure FaceGaPh
-if ! [ -f data/settings.conf ]; then
-	mkdir data
-	cp settings.conf.template data/settings.conf
+# Configure settings
+if ! [ -f settings.conf ]; then
+	cp settings.conf.template settings.conf
 	echo "Please add the path to your photos in 'data/settings.conf' and run this script again!"
 	exit
 else
-	PHOTOS_PATH=`cat data/settings.conf | grep "path =" | tr -d ' ' | cut -d '=' -f 2`
+	PHOTOS_PATH=`cat settings.conf | grep "path =" | tr -d ' ' | cut -d '=' -f 2`
 	echo "Path to your photos: $PHOTOS_PATH"
 	if ! [ -d $PHOTOS_PATH ]; then
 		echo "Photos path is not a folder. Please reconfigure your path in 'data/settings.conf' and run this script again!"
 		exit
 	fi
-	cd gallery/static
+	cd ../static
 	rm -f gallery
 	ln -s $PHOTOS_PATH gallery
+	cd ../scripts
 fi
 
+cd ..
+mkdir data
+
 # go to one level above facegaph root
-cd ../../../
+cd ..
 
 # Install facenet
 if ! [  -d facenet ]; then

@@ -1,7 +1,7 @@
 '''
 Copyright (c) 2018 - Dumi Loghin (dumi@makerlala.com)
 
-This file is part of FaceGaPh - an open source smart photo gallery with 
+This file is part of faceful - an open source smart photo gallery with 
 object and face recognition.
 
 This program is free software: you can redistribute it and/or modify
@@ -29,6 +29,7 @@ class Settings:
     def __init__(self):
         self.path_to_settings_file = PATH_TO_SETTINGS
         self.path = ""
+        self.project_path = ""
         self.fresh = True
         self.max_photo_fetch = 20
         self.face_cls_training_threshold = 2
@@ -51,8 +52,10 @@ class Settings:
     def parse_settings(self,pairs):
         for pair in pairs:
             try:
-                if pair[0] == "path":
+                if pair[0] == "photospath":
                     self.path = pair[1]
+                elif pair[0] == "projectpath":
+                    self.project_path = pair[1]
                 elif pair[0] == "fresh":
                     self.fresh = (pair[1] == "True")
                 elif pair[0] == "maxphotofetch":

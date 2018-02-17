@@ -1,7 +1,7 @@
 '''
 Copyright (c) 2018 - Dumi Loghin (dumi@makerlala.com)
 
-This file is part of FaceGaPh - an open source smart photo gallery with 
+This file is part of faceful - an open source smart photo gallery with 
 object and face recognition.
 
 This program is free software: you can redistribute it and/or modify
