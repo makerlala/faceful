@@ -54,7 +54,7 @@ if ! [ -f settings.conf ]; then
 	echo "Please add the path to your photos in 'settings.conf' and run this script again!"
 	exit
 else
-	PHOTOS_PATH=`cat settings.conf | grep "path =" | tr -d ' ' | cut -d '=' -f 2`
+	PHOTOS_PATH=`cat settings.conf | grep "photos path =" | tr -d ' ' | cut -d '=' -f 2`
 	echo "Path to your photos: $PHOTOS_PATH"
 	if ! [ -d "$PHOTOS_PATH" ]; then
 		echo "Photos path is not a folder. Please reconfigure your path in 'settings.conf' and run this script again!"
