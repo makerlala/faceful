@@ -34,6 +34,15 @@ else
 ./install.sh
 ```
 
+### Install on Jetson TX1 / TX2
+
+On Nvidia Jetson machines, you need to install tensorflow for aarch64. We have compiled tensorflow 1.5.0rc1 for Jetson and made it available here:
+https://drive.google.com/open?id=16apjnV-SKOepWou8Jcre-LjjEVMDQ_au
+
+Download the file, place it in the tensorflow folder and run install.sh.
+
+### Folder structure
+
 After installation, your folder structure should be:
 ```
 my-smart-gallery
