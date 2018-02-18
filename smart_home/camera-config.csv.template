@@ -1,0 +1,3 @@
+#Name;Type;Path;User;Password;Location;Objects
+jetsontx1;jetson;192.168.1.77;/home/nvidia/my-smart-home/faceful/smart_home;nvidia;na;Living Room;Sofa
+cam1;ipcam;192.168.1.220;/media/?action=snapshot;admin;admin;Kitchen;Table

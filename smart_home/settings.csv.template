@@ -1,0 +1,4 @@
+#Key;Value
+certificate file;/etc/letsencrypt/live/<domain>/fullchain.pem
+certificate private key file;/etc/letsencrypt/live/<domain>/privkey.pem
+facedet file;facedet_all.txt
