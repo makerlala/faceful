@@ -102,6 +102,9 @@ class Entity:
         global root_en_id
         global entity_id_map
         global entity_db_id_map
+        if not os.path.isdir(path):
+            print("Path not found: " + path)
+            sys.exit(1)
         root = Entity(vpath, name, root_en_id, -1, True, False)
         entity_id_map[root_en_id] = root
         root_en_id = root_en_id + 1
@@ -543,7 +546,10 @@ def main(args):
         return
     
     global root_entity
-    root_entity = Entity.build_tree(settings.path, "../static/gallery", db, "root")
+    root_entity = Entity.build_tree(settings.path, "static/gallery", db, "root")
+    
+    if not os.path.isdir("static/tmp"):
+        os.mkdir("static/tmp")
     
     global proc_pool
     proc_pool = Pool(processes=1)
