@@ -36,7 +36,21 @@ else
 
 ### Install on Jetson TX1 / TX2
 
-On Nvidia Jetson machines, you need to install tensorflow for aarch64. We have compiled tensorflow 1.5.0rc1 for Jetson and made it available here:
+On Nvidia Jetson machines, you need to install OpenCV, scipy, tensorflow for aarch64. For OpenCV, we have compile it from sources and provide 
+the share library. Download this library from https://drive.google.com/open?id=1s6mlQbWeG1pSyh-Qrr6ukFm7WbTtkc9z and place it in the tensorflow
+folder. The install script will place it in the site-packages folder.
+
+For scipy, install it using:
+```
+sudo apt-get install python-scipy
+ln -s /usr/lib/python2.7/dist-packages/scipy scipy
+cd my-smart-gallery/env3/lib/python2.7/site-packages
+sudo apt-get install python3-scipy
+cd my-smart-gallery/env3/lib/python3.5/site-packages
+ln -s /usr/lib/python3/dist-packages/scipy scipy
+```
+
+We have compiled tensorflow 1.5.0rc1 for Jetson and made it available here:
 https://drive.google.com/open?id=16apjnV-SKOepWou8Jcre-LjjEVMDQ_au
 
 Download the file, place it in the tensorflow folder and run install.sh.
