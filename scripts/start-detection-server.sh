@@ -46,7 +46,6 @@ else
 	virtualenv $VENV
 fi
 source $VENV/bin/activate
-$PIP install --upgrade html5lib scipy Pillow absl-py sklearn opencv-python $TENSORFLOW_MODULE
-cd my-smart-home/src
+cd faceful/src
 echo "Working in folder `pwd`"
 $PYTHON facedet.py -o
