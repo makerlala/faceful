@@ -38,7 +38,7 @@ else
 
 On Nvidia Jetson machines, you need to install OpenCV, scipy, tensorflow for aarch64. For OpenCV, we have compile it from sources and provide 
 the share library. Download this library from https://drive.google.com/open?id=1s6mlQbWeG1pSyh-Qrr6ukFm7WbTtkc9z and place it in the tensorflow
-folder. The install script will place it in the site-packages folder.
+folder. The install script will place it in the site-packages folder. You can find a guide on how to compile OpenCV on Jetson here: https://jkjung-avt.github.io/opencv3-on-tx2.
 
 For scipy, install it using:
 ```
