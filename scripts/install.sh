@@ -26,11 +26,17 @@ FACENET_LFW_PKL="lfw_classifier-20170512-110547.pkl"
 OBJECTDET_MODEL="ssd_mobilenet_v1_coco_2017_11_17/frozen_inference_graph.pb"
 OBJECTDET_URL="http://download.tensorflow.org/models/object_detection/ssd_mobilenet_v1_coco_2017_11_17.tar.gz"
 OBJECTDET_ARCHIVE="ssd_mobilenet_v1_coco_2017_11_17.tar.gz"
+TENSORFLOW_AARCH64="tensorflow-1.5.0rc1-cp35-cp35m-linux_aarch64.whl"
+TENSORFLOW_AARCH64_URL="https://drive.google.com/open?id=16apjnV-SKOepWou8Jcre-LjjEVMDQ_au"
+OPENCV_AARCH64="cv2.cpython-35m-aarch64-linux-gnu.so"
+OPENCV_AARCH64_URL="https://drive.google.com/open?id=1s6mlQbWeG1pSyh-Qrr6ukFm7WbTtkc9z"
 
 PYTHON="python3"
 PIP="pip3"
 VENV="env3"
 PYTHON_VERSION=`$PYTHON -V 2>&1`
+# PIPUPGRADE="--upgrade"
+PIPUPGRADE=""
 
 # by default use GPU
 USE_GPU=1
@@ -130,20 +136,42 @@ else
 	virtualenv $VENV
 fi
 source $VENV/bin/activate
-$PIP install --upgrade html5lib scipy Pillow absl-py sklearn opencv-python $TENSORFLOW_MODULE
+
+$PIP install $PIPUPGRADE html5lib numpy Pillow absl-py sklearn
+ARCH=`uname -m`
+if [ $ARCH == "aarch64" ]; then
+	if ! [ -f tensorflow/$OPENCV_AARCH64 ]; then
+		echo "Download tensorflow for aarch64 from $OPENCV_AARCH64_URL and put it in tensorflow folder."
+		exit
+	else
+		cp tensorflow/$OPENCV_AARCH64 $VENV/lib/python*/site-packages/
+	fi
+	if ! [ -f tensorflow/$TENSORFLOW_AARCH64 ]; then
+		echo "Download tensorflow for aarch64 from $TENSORFLOW_AARCH64_URL and put it in tensorflow folder."
+		exit
+	else
+		$PIP install tensorflow/$TENSORFLOW_AARCH64
+	fi
+else
+	 $PIP install $PIPUPGRADE $TENSORFLOW_MODULE opencv-python
+fi
 
 # Create classifier environment
 cd facenet
 export PYTHONPATH="src"
 if ! [ -d ../models/lfw/lfw_mtcnnpy_160 ]; then
 	for N in {1..4}; do 
-		python src/align/align_dataset_mtcnn.py ../models/lfw/raw ../models/lfw/lfw_mtcnnpy_160 --image_size 160 --margin 32 --random_order --gpu_memory_fraction 0.25 &
+		$PYTHON src/align/align_dataset_mtcnn.py ../models/lfw/raw ../models/lfw/lfw_mtcnnpy_160 --image_size 160 --margin 32 --random_order --gpu_memory_fraction 0.25 &
 	done
 	wait
 fi
 # Train LFW classifier
 if ! [ -f ../models/$FACENET_LFW_PKL ]; then
-$PYTHON src/classifier.py TRAIN ../models/lfw/lfw_mtcnnpy_160 ../models/$FACENET_MODEL ../models/$FACENET_LFW_PKL --batch_size 1000
+	BATCH_SIZE=1000
+	if [ $ARCH == "aarch64" ]; then
+		BATCH_SIZE=10
+	fi
+	$PYTHON src/classifier.py TRAIN ../models/lfw/lfw_mtcnnpy_160 ../models/$FACENET_MODEL ../models/$FACENET_LFW_PKL --batch_size $BATCH_SIZE
 fi
 # Test
 echo ""
