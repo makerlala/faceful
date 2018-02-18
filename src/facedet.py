@@ -572,7 +572,7 @@ def facedet_objdet_as_service():
 '''Detect faces on all images from all cameras'''
 def facedet_bulk(args):
     if len(args) < 3:
-        print("Usage: " + args[0] + " <settings_file> <camera_config_file>")
+        print("Usage: " + args[0] + " -b <settings_file> <camera_config_file>")
         return
     
     start_time = time.time()
@@ -580,26 +580,26 @@ def facedet_bulk(args):
     img_paths = []
     img_loc = []
     img_tstamp = []
-    with open(args[2], 'rt') as csvfile:
+    with open(args[3], 'rt') as csvfile:
         csvreader = csv.reader(csvfile, delimiter=';')
         for row in csvreader:
             if row[0].startswith('#'):
                 continue
-            img_paths.append(row[0] + ".jpg")
+            img_paths.append("smart_home/" + row[0] + ".jpg")
             img_loc.append(row[6] + ' ' + row[7])
-            with open(row[0] + ".txt", 'rt') as tsfile:
+            with open("smart_home/" + row[0] + ".txt", 'rt') as tsfile:
                 img_tstamp.append(int(tsfile.read()))
                 tsfile.close()
         csvfile.close()
     
     faces_file = ""
-    with open(args[1], 'rt') as csvfile:
+    with open(args[2], 'rt') as csvfile:
         csvreader = csv.reader(csvfile, delimiter=';')
         for row in csvreader:
             if row[0].startswith('#'):
                 continue
-            if row[1] == "facedet file":
-                faces_file = row[1]
+            if row[0] == "facedet file":
+                faces_file = "smart_home/" + row[1]
     
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
@@ -676,11 +676,13 @@ def facedet_bulk(args):
                 #predictions = model.predict(emb_array)
                 #best_class_indices = predictions
                 #best_class_probabilities = predictions
-                with open('faces_file.txt','wt') as outfile:                    
+                with open(faces_file,'wt') as outfile:                    
                     outfile.write("I can see ")
                     for i in range(len(best_class_indices)):
-                    # print('%4d  %s %s: %.3f' % (i, class_names[best_class_indices[i]], img_loc[img_index[i]], best_class_probabilities[i]))                    
-                        outfile.write(class_names[best_class_indices[i]] + " at " + img_loc[img_index[i]] + " and ")
+                    # print('%4d  %s %s: %.3f' % (i, class_names[best_class_indices[i]], img_loc[img_index[i]], best_class_probabilities[i]))
+                        name = class_names[best_class_indices[i]]
+                        location = img_loc[img_index[i]]
+                        outfile.write(name + " at " + location + " and ")
                     outfile.write(" that's it")
                     outfile.close()
 
@@ -692,5 +694,5 @@ if __name__ == '__main__':
             facedet_as_service()
         elif sys.argv[1] == "-o":
             facedet_objdet_as_service()
-    else:
-        facedet_bulk(sys.argv)
+        elif sys.argv[1] == "-b":
+            facedet_bulk(sys.argv)

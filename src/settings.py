@@ -67,27 +67,27 @@ class Settings:
                 elif pair[0] == "facedetport":
                     self.facedet_port = int(pair[1])
                 elif pair[0] == "facenetsrc":
-                    self.facenet_src = pair[1]
+                    self.facenet_src = self.project_path + pair[1]
                 elif pair[0] == "facenetmodel":
-                    self.facenet_model = pair[1]
+                    self.facenet_model = self.project_path + pair[1]
                 elif pair[0] == "facenetclassifier":
-                    self.facenet_classifier = pair[1]
+                    self.facenet_classifier = self.project_path + pair[1]
                 elif pair[0] == "facenetclassifierimages":
-                    self.facenet_classifier_images = pair[1]
+                    self.facenet_classifier_images = self.project_path + pair[1]
                 elif pair[0] == "facenetclassifiertrainimagesize":
                     self.facenet_classifier_image_size = int(pair[1])
                 elif pair[0] == "facenetclassifiertrainbatchsize":
                     self.facenet_classifier_batch_size = int(pair[1])
                 elif pair[0] == "tensorflowmodelssrc":
-                    self.tensorflow_models_src = pair[1]
+                    self.tensorflow_models_src = self.project_path + pair[1]
                 elif pair[0] == "tensorflowobjectdetectionmodel":
-                    self.tensorflow_object_detection_model = pair[1]
+                    self.tensorflow_object_detection_model = self.project_path + pair[1]
                 elif pair[0] == "tensorflowobjectdetectionlabels":
-                    self.tensorflow_object_detection_labels = pair[1]
+                    self.tensorflow_object_detection_labels = self.project_path + pair[1]
                 elif pair[0] == "facedetmodel":
-                    self.facedet_model = pair[1]
+                    self.facedet_model = self.project_path + pair[1]
                 elif pair[0] == "facedetlabels":
-                    self.facedet_labels = pair[1]
+                    self.facedet_labels = self.project_path + pair[1]
                 elif pair[0] == "info":
                     self.info = (pair[1] == "True")
                 elif pair[0] == "debug":

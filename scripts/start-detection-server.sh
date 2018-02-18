@@ -46,6 +46,6 @@ else
 	virtualenv $VENV
 fi
 source $VENV/bin/activate
-cd faceful/src
+cd faceful
 echo "Working in folder `pwd`"
-$PYTHON facedet.py -o
+$PYTHON src/facedet.py -o

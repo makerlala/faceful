@@ -46,13 +46,29 @@ else
 	virtualenv $VENV
 fi
 source $VENV/bin/activate
-cd faceful/smart-home
+cd faceful/smart_home
+
+RUN=true
+
+trap ctrl_c INT
+
+function ctrl_c() {
+        echo "*** Trapped CTRL-C"
+	echo "Stopping..."
+	RUN=false
+}
+
 # start https server first
 $PYTHON dialogflow_https_server.py settings.csv users.csv &
-while 1; do
+sleep 2
+SPID=`ps aux | grep dialogflow_https_server.py | head -n 1 | tr -s ' ' | cut -d ' ' -f 2`
+export PYTHONPATH="../facenet/src;../tensorflow/models/research"
+while $RUN; do
 	./collect-images.sh
-	$PYTHON ../src/facenet.py settings.csv camera-config.csv
-	sleep 10
+	cd ..
+	$PYTHON src/facedet.py -b smart_home/settings.csv smart_home/camera-config.csv
+	cd smart_home
+	sleep 20
 done
-echo "Stopping..."
+kill -9 $SPID
  
