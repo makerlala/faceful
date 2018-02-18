@@ -87,7 +87,19 @@ If you run both components on the same machine, just start the Flask server. Els
 
 If everything is ok, open a browser and go to http://localhost:8000 or http://<webserver>:8000
 
+### Run smart home face detection
+
+First, read more about this project on our blog: https://makerlala.com/blog
+
+Secondly, configure users (users.csv), cameras (camera-config.csv), SSL certificate and file location (settings.csv).
+
+Thirdly, you have to configure the actions on Google Cloud (see the blog post for that).
+
+Lastly, run the app with ```./start-smart-home.sh```
+
 Enjoy!
+
+## Warning: this is an alpha release. Please check for the latest release on our github page.
 
 ## Credits
 Webpage template Radius is created by TEMPLATED (https://templated.co/radius) and released for free under the Creative Commons Attribution 3.0 license (https://templated.co/license)
