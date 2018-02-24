@@ -50,6 +50,7 @@ entity_id_map = {}
 entity_db_id_map ={}
 root_en_id = 0
 
+
 class Entity:
     def __init__(self, path, name, en_id, db_id, is_dir, is_video):
         self.path = path
@@ -118,7 +119,7 @@ class Entity:
             elif file.startswith("."):
                 continue
             elif is_video(file) or is_photo(file):
-                db_id = db.get_photo_key(file_path)
+                db_id = db.get_photo_id(file_path)
                 child = Entity(virtual_file_path, file, root_en_id, db_id, False, is_video(file))
                 if prev_child is not None:
                     child.prev_id = prev_child.en_id
@@ -134,14 +135,15 @@ class Entity:
         return root
 
 
-        
 def is_photo(f):
     f = str.lower(f)
     return f.endswith(".jpg") or f.endswith(".jpeg") or f.endswith(".png") or f.endswith(".bmp") or f.endswith(".gif")
-    
+
+
 def is_video(f):
     f = str.lower(f)
     return f.endswith(".mpg") or f.endswith(".avi") or f.endswith(".mp4") or f.endswith(".mov") or f.endswith(".wmv")
+
 
 def update_database():
     global settings
@@ -163,31 +165,39 @@ def update_database():
     for img_path in img_paths:
         print("Progress {}".format(100.8*i/n))
         i = i + 1.0      
-        img_id = db.get_photo_key(img_path)
+        img_id = db.get_photo_id(img_path)
         if img_id != -1:
             print("Photo is already in the database")
             continue
 
         img_id = db.insert_photo(img_path)
         print(img_path)
-        ret = conn.upload_images(settings.facedet_host, settings.facedet_port, [img_path])        
+        conn.send_message("objdet")
+        conn.upload_images([img_path])
+        ret = conn.get_response()
+        print("Got " + ret)       
         records = ret.split(';')
         for record in records:
             if record == "END":
                 break
             tokens = record.split(' ')
+            print(record + str(len(tokens)))
             db.insert_box(img_id, tokens[1], tokens[2], tokens[3], tokens[4], tokens[0])
             
     db.close()
     conn.close()
 
+
 def train_classifier_callback(result):
     global training_in_progress
+
     training_in_progress = False
     print("Training classifier is done.")
-    
+
+
 def train_classifier():
     global settings
+
     print("Start training classifier")
     conn = Connection(settings.facedet_host, settings.facedet_port)
     db = DataBase()
@@ -204,7 +214,8 @@ def train_classifier():
             y0 = int(float(box[3]) * float(h))
             x1 = int(float(box[4]) * float(w))
             y1 = int(float(box[5]) * float(h))
-            img = cv2.resize(img[y0:y1,x0:x1,:], (settings.facenet_classifier_image_size, settings.facenet_classifier_image_size))
+            img = cv2.resize(img[y0:y1,x0:x1,:],
+                             (settings.facenet_classifier_image_size, settings.facenet_classifier_image_size))
             try:
                 faces[alias].append(cv2.imencode(".png", img)[1].tostring())
             except Exception as e:
@@ -230,7 +241,8 @@ def train_classifier():
         conn.upload_images(faces[alias], in_mem = True)
             
     conn.close()
-        
+
+
 def update_faces(marked_faces):
     db = DataBase()
     for box in db.get_boxes_with_faces():
@@ -244,16 +256,18 @@ def update_faces(marked_faces):
         roi = img[y0:y1,x0:x1,:]
         # TODO - do
 
-def scale_image(image_path, image_id, scaled_h, scaled_w, new_image_path, minRatio=False): 
+
+def scale_image(image_path, image_id, scaled_h, scaled_w, new_image_path, min_ratio=False):
     img = cv2.imread(image_path)
     [h, w] = np.asarray(img.shape)[0:2]
-    if minRatio:
+    if min_ratio:
         ratio = min(scaled_h/h, scaled_w/w)
     else:
         ratio = float(scaled_w)/float(w)
     img = cv2.resize(img, (0,0), fx=ratio, fy=ratio)
     cv2.imwrite(new_image_path, img)
     return new_image_path
+
 
 def scale_boxes_image(image_path, image_id, scaled_h, scaled_w, new_image_path, boxes): 
     img = cv2.imread(image_path)
@@ -281,41 +295,49 @@ def scale_boxes_image(image_path, image_id, scaled_h, scaled_w, new_image_path, 
     cv2.imwrite(new_image_path, img)
     return new_image_path
 
+
 def get_filename_cached_photo(photo_id):
     return "static/tmp/photo_" + str(photo_id) + ".png"
+
 
 def get_filename_cached_photo_labels(photo_id):
     return "static/tmp/photo_labels_" + str(photo_id) + ".png"
     
+
 def get_thumbnail(image_path, image_id, scaled_w):
     filename = "static/tmp/thumbnail_" + str(image_id) + ".png"
     if os.path.isfile(filename):
         return filename
     return scale_image(image_path, image_id, 0, scaled_w, filename)
 
-def get_photo(image_path, image_id, window_h, window_w, boxes, withLabels=False):
-    if withLabels:
+
+def get_photo(image_path, image_id, window_h, window_w, boxes, with_labels=False):
+    if with_labels:
         filename = get_filename_cached_photo_labels(image_id)
     else:
         filename = get_filename_cached_photo(image_id)
     if os.path.isfile(filename):
         return filename
-    if withLabels:
+    if with_labels:
         return scale_boxes_image(image_path, image_id, 0.9 * window_h, 0.6 * window_w, filename, boxes)
     else:
         return scale_image(image_path, image_id, 0.9 * window_h, 0.6 * window_w, filename, minRatio=True)
 
-''' ============================= '''
-''' === === === Flask === === === '''
-    
+
+''' ============================= 
+    === === === Flask === === ===
+    ============================= '''
+
 app = Flask("My Smart Gallery")
 app.secret_key = 'uaYX3T283RGDW384T1EGVas1363'
+
 
 @app.route('/', methods=['GET'])
 def index():
     global settings
     global root_entity
     global entity_id_map
+
     path_id = request.args.get('path_id')
     if path_id is not None:
         path_id = int(path_id)
@@ -324,42 +346,48 @@ def index():
         if entity is not None:
             session['lastIndex' + str(path_id)] = settings.max_photo_fetch
             return render_template('index.html', 
-                                   entities = entity.children, 
-                                   path_id = path_id, 
-                                   maxfetch = settings.max_photo_fetch)
+                                   entities=entity.children,
+                                   path_id=path_id,
+                                   maxfetch=settings.max_photo_fetch)
             
     return render_template('index.html', 
-                           entities = root_entity.children, 
-                           path_id = -1, 
-                           maxfetch = settings.max_photo_fetch)
+                           entities=root_entity.children,
+                           path_id=-1,
+                           maxfetch=settings.max_photo_fetch)
+
 
 @app.route('/getmorephotos', methods=['POST'])
 def getmorephotos():
     global settings
     global root_entity
     global entity_id_map
+
     path_id = request.form.get('path_id')
     if path_id is not None:
         path_id = int(path_id)
         entity = entity_id_map[path_id]
         if entity is None:
             return '';
-        lastIdxKey = 'lastIndex' + str(path_id)
-        if lastIdxKey in session:
-            lastIdx = session[lastIdxKey]
+        last_index_key = 'last_index' + str(path_id)
+        if last_index_key in session:
+            last_index = session[last_index_key]
         else:
-            lastIdx = 0
+            last_index = 0
         data = ""
-        nextIdx = min(lastIdx + settings.max_photo_fetch, len(entity.children))
-        session[lastIdxKey] = nextIdx
-        for i in range(lastIdx, nextIdx):
+        next_index = min(last_index + settings.max_photo_fetch, len(entity.children))
+        session[last_index_key] = next_index
+        for i in range(last_index, next_index):
             child = entity.children[i]
             if child.is_video:
-                data = data + '<div class="image fit"><a href="/detail?path_id=' + str(child.en_id) + '"><img src="static/img/icon_video_red_512px.png" alt="' + child.name + '" /></a</div>'
+                data = data + '<div class="image fit"><a href="/detail?path_id=' + str(child.en_id) + \
+                       '"><img src="static/img/icon_video_red_512px.png" alt="' + child.name + '" /></a</div>'
             else:
-                data = data + '<div class="image fit"><a href="/detail?path_id=' + str(child.en_id) + '"><img src="/thumbnail?path_id=' + str(child.en_id) + '&w=400" alt="' + child.name + '" /></a></div>'
+                data = data + '<div class="image fit"><a href="/detail?path_id=' + str(child.en_id) + \
+                       '"><img src="/thumbnail?path_id=' + str(child.en_id) + '&w=400" alt="' + child.name + \
+                       '" /></a></div>'
         return data
             
+
 @app.route('/detail', methods=['GET'])
 def detail():
     path_id = request.args.get('path_id')
@@ -382,22 +410,23 @@ def detail():
     
     if entity.is_video:
         return render_template('detail.html', 
-                               entity = entity, 
-                               width = ww, 
-                               imgpath = "", 
-                               stories = [], 
-                               boxes = [])
+                               entity=entity,
+                               width=ww,
+                               imgpath="",
+                               stories=[],
+                               boxes=[])
     
     db = DataBase()
     boxes = db.get_boxes(entity.db_id)
     print(boxes)
     photopath = get_photo(entity.path, entity.en_id, wh, ww, boxes, withLabels=True)   
     return render_template('detail.html', 
-                           entity = entity, 
-                           width = ww, 
-                           imgpath = photopath, 
-                           stories = [], 
-                           boxes = boxes)
+                           entity=entity,
+                           width=ww,
+                           imgpath=photopath,
+                           stories=[],
+                           boxes=boxes)
+
 
 @app.route('/thumbnail', methods=['GET'])
 def thumbnail():
@@ -412,6 +441,8 @@ def thumbnail():
             print("Exception in thumbnail: " + str(e))
     return send_file("static/img/icon_img_red_512px.png", "image/png")
 
+
+# This is called by the client to report browser dimensions
 @app.route('/reportsize', methods=['POST'])
 def reportsize():
     try:
@@ -429,6 +460,7 @@ def reportsize():
 
     return 'OK'
     
+
 @app.route('/search', methods=['GET','POST'])
 def search():
     global settings
@@ -440,9 +472,9 @@ def search():
         data = request.args.get('query')
     if data is None:
         return render_template('index.html', 
-                               entities = root_entity.children, 
-                               path_id = -1, 
-                               maxfetch = settings.max_photo_fetch)
+                               entities=root_entity.children,
+                               path_id=-1,
+                               maxfetch=settings.max_photo_fetch)
 
     db = DataBase()
     photo_ids = []
@@ -472,9 +504,9 @@ def search():
         else:
             print("Error: entity " + str(photo_id[0]) + " not found in the map")
     return render_template('index.html', 
-                           entities = entities, 
-                           path_id = -1, 
-                           maxfetch = settings.max_photo_fetch)
+                           entities=entities,
+                           path_id=-1,
+                           maxfetch=settings.max_photo_fetch)
 
 
 @app.route('/updatelabel', methods=['POST'])
@@ -487,6 +519,7 @@ def updatelabel():
     os.remove(get_filename_cached_photo_labels(photoid))
     return redirect("/detail?path_id=" + photoid)
     
+
 @app.route('/deletecache', methods=['POST'])
 def deletecache():
     path = "static/tmp"
@@ -496,17 +529,22 @@ def deletecache():
         if os.path.isfile(filepath) and file.startswith("photo"):
             os.remove(filepath)
             
+
 @app.route('/settings', methods=['GET'])
 def settings():
+    # TODO
     return render_template('settings.html')
+
 
 @app.route('/ai', methods=['GET'])
 def ai():
     global settings
     global training_in_progress
+
     db = DataBase()
     marked_objects = db.get_boxes_with_labels(labelIdx = 6)
     marked_faces = db.get_boxes_with_labels(labelIdx = 7)
+
     if not training_in_progress:
         can_train = True
         for key in marked_faces.keys():
@@ -515,29 +553,36 @@ def ai():
                 break
     else:
         can_train = False
+
     return render_template('ai.html',
-                           marked_objects = marked_objects,
-                           marked_faces = marked_faces, 
-                           faces_threshold = settings.face_cls_training_threshold, 
-                           can_train = can_train,
-                           training_in_progress = training_in_progress)
+                           marked_objects=marked_objects,
+                           marked_faces=marked_faces,
+                           faces_threshold=settings.face_cls_training_threshold,
+                           can_train=can_train,
+                           training_in_progress=training_in_progress)
+
 
 @app.route('/train', methods=['POST'])
 def train():
     global proc_pool
     global training_in_progress
+
     if not training_in_progress:
         training_in_progress = True
         try:
-            proc_pool.apply_async(train_classifier, callback = train_classifier_callback)
+            proc_pool.apply_async(train_classifier, callback=train_classifier_callback)
             proc_pool.close()
         except Exception as e:
+            training_in_progress = False
             print("Training failure: " + str(e))
+
     return redirect("/ai")
 
-''' === === === main === === === '''       
+
 def main(args):
     db = DataBase()
+    db.create()
+
     global settings
     settings = Settings.load()
     
@@ -556,7 +601,8 @@ def main(args):
     
     app.logger.info('Listening on port 8000')
     app.run(host = '0.0.0.0', port=8000, debug=True)
- 
+
+
 if __name__ == "__main__":
     main(sys.argv)
     

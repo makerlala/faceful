@@ -26,7 +26,7 @@ class Connection:
     def __init__(self, host, port):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.connect((host,port))
-        self.sock.settimeout(5)
+        self.sock.settimeout(600)
     
     def close(self):
         self.sock.close()
@@ -96,9 +96,9 @@ class Connection:
         response = ""
         while True:
             data = self.sock.recv(CHUNK).decode()
+            response = response + data
             if 'END' in data:
                 break
-            response = response + data
         return response
     
     '''

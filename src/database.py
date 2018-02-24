@@ -17,52 +17,72 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
+
 import sqlite3
 import hashlib
+from logger import Logger
 
-# SQLite database has to be in data folder
+# SQLite database has to be in 'data' folder
 PATH_TO_DB = "data/gallery.db"
 
-'''
-Database manager
-'''            
+
 class DataBase:
     def __init__(self):
         self.path_to_db = PATH_TO_DB
         self.db = sqlite3.connect(self.path_to_db)
         self.cursor = self.db.cursor()
-        
+
+    '''Create all tables'''
     def create(self):
         try:
             self.cursor.execute('''CREATE TABLE IF NOT EXISTS dirs(id INTEGER PRIMARY KEY, path TEXT unique)''')
-            self.cursor.execute('''CREATE TABLE IF NOT EXISTS photos(id INTEGER PRIMARY KEY, path TEXT UNIQUE, hash TEXT)''')
-            self.cursor.execute('''CREATE TABLE IF NOT EXISTS boxes(id INTEGER PRIMARY KEY, photoid INTEGER, x0 REAL, y0 REAL, x1 REAL, y1 REAL, label TEXT, alias TEXT, learned INTEGER DEFAULT 0, FOREIGN KEY(photoid) REFERENCES photos(id))''')
-            self.cursor.execute('''CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY UNIQUE, val TEXT''')
+        except Exception as e:
+            Logger.fatal("Exception in creating dirs db: " + str(e))
+        try:
+            self.cursor.execute('''CREATE TABLE IF NOT EXISTS photos(id INTEGER PRIMARY KEY, 
+            path TEXT UNIQUE, hash TEXT)''')
+        except Exception as e:
+            Logger.fatal("Exception in creating photos db: " + str(e))
+        try:
+            self.cursor.execute('''CREATE TABLE IF NOT EXISTS boxes(id INTEGER PRIMARY KEY, photoid INTEGER, 
+            x0 REAL, y0 REAL, x1 REAL, y1 REAL, label TEXT, alias TEXT, learned INTEGER DEFAULT 0, 
+            FOREIGN KEY(photoid) REFERENCES photos(id))''')
+        except Exception as e:
+            Logger.fatal("Exception in creating boxes db: " + str(e))
+        try:
+            self.cursor.execute('''CREATE TABLE IF NOT EXISTS settings(key PRIMARY KEY UNIQUE, val TEXT)''')
+        except Exception as e:
+            Logger.fatal("Exception in creating settings db: " + str(e))
+        try:
             self.db.commit()
         except Exception as e:
-            print("Exception in create DB: " + str(e))
+            Logger.fatal("Exception in db commit: " + str(e))
 
     '''Get photo id'''
-    def get_photo_key(self, photo_path):
-        self.cursor.execute('''SELECT id FROM photos WHERE path = ?''', (photo_path,))
-        rows = self.cursor.fetchall()
-        if len(rows) > 1:
-            print("Error: too many ids for the same path!")
-        elif len(rows) == 0:
+    def get_photo_id(self, photo_path):
+        try:
+            self.cursor.execute('''SELECT id FROM photos WHERE path = ?''', (photo_path,))
+            rows = self.cursor.fetchall()
+            if len(rows) > 1:
+                Logger.error("Too many ids for the same path.")
+            elif len(rows) == 0:
+                return -1
+        except Exception as e:
+            Logger.error("Exception in get_photo_id: " + str(e))
             return -1
-        return rows[0][0]
+        return int(rows[0][0])
 
     '''Insert photo path and hash into db and return primary key'''
     def insert_photo(self, photo_path):
-        with open(photo_path, 'rb') as fin:
-            hs = hashlib.sha256(fin.read()).hexdigest()
-            fin.close()
         try:
+            with open(photo_path, 'rb') as fin:
+                hs = hashlib.sha256(fin.read()).hexdigest()
+                fin.close()
             self.cursor.execute('''INSERT INTO photos(path, hash) VALUES(?, ?)''', (photo_path, hs))
+            self.db.commit()
         except Exception as e:
-            print(e)
-        self.db.commit()
-        return self.get_photo_key(photo_path)
+            Logger.error("Exception in insert_photo: " + str(e))
+        return self.get_photo_id(photo_path)
     
     def get_photo(self, photo_id):
         try:
@@ -99,19 +119,19 @@ class DataBase:
     labelIdx = 6 - object label (e.g. face, person, car ... )
     labelIdx = 7 - face label
     '''
-    def get_boxes_with_labels(self, labelIdx = 6):
+    def get_boxes_with_labels(self, label_index=6):
         try:
-            if labelIdx == 6:
+            if label_index == 6:
                 self.cursor.execute('''SELECT * FROM boxes WHERE label != ""''')
             else:
                 self.cursor.execute('''SELECT * FROM boxes WHERE alias != "" AND learned = 2''')
             rows = self.cursor.fetchall()
             data = {}
             for row in rows:
-                if row[labelIdx] in data:
-                    data[row[labelIdx]].append(row)
+                if row[label_index] in data:
+                    data[row[label_index]].append(row)
                 else:
-                    data[row[labelIdx]] = [row]
+                    data[row[label_index]] = [row]
             return data
         except Exception as e:
             print(e)
@@ -127,7 +147,8 @@ class DataBase:
 
     def insert_box(self, photo_id, x0, y0, x1, y1, label):
         try:
-            self.cursor.execute('''INSERT INTO boxes(photoid, x0, y0, x1, y1, label, alias) VALUES(?, ?, ?, ?, ?, ?, ?)''', (photo_id, x0, y0, x1, y1, label, ""))
+            self.cursor.execute('''INSERT INTO boxes(photoid, x0, y0, x1, y1, label, alias) 
+            VALUES(?, ?, ?, ?, ?, ?, ?)''', (photo_id, x0, y0, x1, y1, label, ""))
             self.db.commit()
         except Exception as e:
             print(e)
@@ -160,5 +181,6 @@ class DataBase:
                 
     def close(self):
         self.db.close()
+
 
 ''' === === === End of DataBase === === === '''
