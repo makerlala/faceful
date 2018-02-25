@@ -34,6 +34,7 @@ training_in_progress = False
 from networking import Connection
 from settings import Settings
 from database import DataBase
+from logger import Logger
 
 settings = None
 
@@ -43,10 +44,8 @@ Entity: folder, image, video
 - arranged as map for quick access
 - has an id in this app (en_id)
 - has a distinct id in the database (db_id)
-(that is why we keep two maps, entity_id_map and entity_db_id_map
 '''
 root_entity = None
-entity_id_map = {}
 entity_db_id_map ={}
 root_en_id = 0
 
@@ -101,13 +100,12 @@ class Entity:
     def build_tree(path, vpath, db, name):
         global settings
         global root_en_id
-        global entity_id_map
         global entity_db_id_map
+
         if not os.path.isdir(path):
             print("Path not found: " + path)
             sys.exit(1)
         root = Entity(vpath, name, root_en_id, -1, True, False)
-        entity_id_map[root_en_id] = root
         root_en_id = root_en_id + 1
         prev_child = None
         for file in os.listdir(path):
@@ -126,7 +124,6 @@ class Entity:
                     prev_child.next_id = child.en_id
                 prev_child = child
                 root.add_child(child)
-                entity_id_map[root_en_id] = child
                 root_en_id = root_en_id + 1
                 entity_db_id_map[db_id] = child
             else:
@@ -163,15 +160,16 @@ def update_database():
     img_ids_to_uplod = []
     img_paths_to_upload = {}
     for img_path in img_paths:
-        print("Progress {}".format(100.0*i/n))
+        Logger.info("Update database progress {}".format(100.0*i/n))
         i = i + 1.0      
         img_id = db.get_photo_id(img_path)
         if img_id != -1:
-            print("Photo is already in the database")
+            # Photo is already in the database
+            Logger.debug("Photo is already in the database: " + img_path)
             continue
 
         img_id = db.insert_photo(img_path)
-        print(img_path)
+        print(img_path, img_id)
         img_ids_to_uplod.append(img_id)
         img_paths_to_upload[img_id] = img_path
 
@@ -179,22 +177,25 @@ def update_database():
         db.close()
         return
 
-    for i in range(int(len(img_paths_to_upload)/settings.facedet_batch) + 1):
+    for i in range(int(len(img_ids_to_uplod)/settings.facedet_batch) + 1):
         start = i * settings.facedet_batch
-        end = min(len(img_paths_to_upload), (i+1) * settings.facedet_batch)
+        end = min(len(img_ids_to_uplod), (i+1) * settings.facedet_batch)
         img_paths = [img_paths_to_upload[id] for id in img_ids_to_uplod[start:end]]
         conn = Connection(settings.facedet_host, settings.facedet_port)
         conn.send_message("objdet")
         conn.upload_images(img_paths, img_ids_to_uplod[start:end])
         ret = conn.get_response()
         print("Got " + ret)       
-        records = ret.split(';')
+        records = ret.split(':')
         for record in records:
             if record == "END":
                 break
-            tokens = record.split(' ')
-            print(record + str(len(tokens)))
-            db.insert_box(img_id, tokens[1], tokens[2], tokens[3], tokens[4], tokens[0])
+            tokens = record.split(';')
+            if len(tokens) != 6:
+                Logger.error("Error in update_database: invalid number of tokens " +
+                             len(record) + " in record [" + record + "]")
+            else:
+                db.insert_box(tokens[1], tokens[2], tokens[3], tokens[4], tokens[5], tokens[0])
         conn.close()
 
     db.close()
@@ -269,24 +270,26 @@ def update_faces(marked_faces):
         # TODO - do
 
 
-def scale_image(image_path, image_id, scaled_h, scaled_w, new_image_path, min_ratio=False):
-    img = cv2.imread(image_path)
+def scale_photo(photo_path, photo_id, scaled_h, scaled_w, cached_photo_path, min_ratio=False):
+    img = cv2.imread(photo_path)
     [h, w] = np.asarray(img.shape)[0:2]
     if min_ratio:
         ratio = min(scaled_h/h, scaled_w/w)
     else:
         ratio = float(scaled_w)/float(w)
     img = cv2.resize(img, (0,0), fx=ratio, fy=ratio)
-    cv2.imwrite(new_image_path, img)
-    return new_image_path
+    cv2.imwrite(cached_photo_path, img)
+    return cached_photo_path
 
 
-def scale_boxes_image(image_path, image_id, scaled_h, scaled_w, new_image_path, boxes): 
-    img = cv2.imread(image_path)
+def scale_photo_with_boxes(photo_path, photo_id, scaled_h, scaled_w, cached_photo_path, boxes):
+    img = cv2.imread(photo_path)
     [h, w] = np.asarray(img.shape)[0:2]
+    print("1 h {} w {}".format(h, w))
     ratio = min(scaled_h/h, scaled_w/w)
     img = cv2.resize(img, (0,0), fx=ratio, fy=ratio)
     [h, w] = np.asarray(img.shape)[0:2]
+    print("2 h {} w {}".format(h, w))
     n = 1
     for box in boxes:
         try:
@@ -294,18 +297,18 @@ def scale_boxes_image(image_path, image_id, scaled_h, scaled_w, new_image_path, 
             y0 = int(float(box[3]) * float(h))
             x1 = int(float(box[4]) * float(w))
             y1 = int(float(box[5]) * float(h))
-            cv2.rectangle(img, (x0,y0), (x1,y1), (0,0,255), 2)
+            cv2.rectangle(img, (x0, y0), (x1, y1), (0, 0, 255), 2)
             font = cv2.FONT_HERSHEY_SIMPLEX
             if box[6] == "face":
-                txt = box[7] + " (box " + str(n) + ")"
+                txt = box[7] + " (face " + str(n) + ")"
             else:
                 txt = box[6] + " (box " + str(n) + ")"
-            n= n + 1
-            cv2.putText(img, txt, (x0,y0-10), font, 0.75, (0,0,255), 2, cv2.LINE_AA)
+            n = n + 1
+            cv2.putText(img, txt, (x0, y0-10), font, 0.75, (0, 0, 255), 2, cv2.LINE_AA)
         except Exception as e:
-            print("Error in scale_boxes_image: " + str(e))
-    cv2.imwrite(new_image_path, img)
-    return new_image_path
+            Logger.error("Exception in scale_boxes_photo: " + str(e))
+    cv2.imwrite(cached_photo_path, img)
+    return cached_photo_path
 
 
 def get_filename_cached_photo(photo_id):
@@ -316,24 +319,24 @@ def get_filename_cached_photo_labels(photo_id):
     return "static/tmp/photo_labels_" + str(photo_id) + ".png"
     
 
-def get_thumbnail(image_path, image_id, scaled_w):
-    filename = "static/tmp/thumbnail_" + str(image_id) + ".png"
+def get_thumbnail(photo_path, photo_id, scaled_w):
+    filename = "static/tmp/thumbnail_" + str(photo_id) + ".png"
     if os.path.isfile(filename):
         return filename
-    return scale_image(image_path, image_id, 0, scaled_w, filename)
+    return scale_photo(photo_path, photo_id, 0, scaled_w, filename)
 
 
-def get_photo(image_path, image_id, window_h, window_w, boxes, with_labels=False):
+def get_photo(photo_path, photo_id, window_h, window_w, boxes, with_labels=False):
     if with_labels:
-        filename = get_filename_cached_photo_labels(image_id)
+        filename = get_filename_cached_photo_labels(photo_id)
     else:
-        filename = get_filename_cached_photo(image_id)
+        filename = get_filename_cached_photo(photo_id)
     if os.path.isfile(filename):
         return filename
     if with_labels:
-        return scale_boxes_image(image_path, image_id, 0.9 * window_h, 0.6 * window_w, filename, boxes)
+        return scale_photo_with_boxes(photo_path, photo_id, 0.9 * window_h, 0.6 * window_w, filename, boxes)
     else:
-        return scale_image(image_path, image_id, 0.9 * window_h, 0.6 * window_w, filename, minRatio=True)
+        return scale_photo(photo_path, photo_id, 0.9 * window_h, 0.6 * window_w, filename, min_ratio=True)
 
 
 ''' ============================= 
@@ -348,13 +351,12 @@ app.secret_key = 'uaYX3T283RGDW384T1EGVas1363'
 def index():
     global settings
     global root_entity
-    global entity_id_map
+    global entity_db_id_map
 
     path_id = request.args.get('path_id')
     if path_id is not None:
         path_id = int(path_id)
-        entity = entity_id_map[path_id]
-        print(entity)
+        entity = entity_db_id_map[path_id]
         if entity is not None:
             session['lastIndex' + str(path_id)] = settings.max_photo_fetch
             return render_template('index.html', 
@@ -372,12 +374,12 @@ def index():
 def getmorephotos():
     global settings
     global root_entity
-    global entity_id_map
+    global entity_db_id_map
 
     path_id = request.form.get('path_id')
     if path_id is not None:
         path_id = int(path_id)
-        entity = entity_id_map[path_id]
+        entity = entity_db_id_map[path_id]
         if entity is None:
             return '';
         last_index_key = 'last_index' + str(path_id)
@@ -391,11 +393,11 @@ def getmorephotos():
         for i in range(last_index, next_index):
             child = entity.children[i]
             if child.is_video:
-                data = data + '<div class="image fit"><a href="/detail?path_id=' + str(child.en_id) + \
+                data = data + '<div class="image fit"><a href="/detail?path_id=' + str(child.db_id) + \
                        '"><img src="static/img/icon_video_red_512px.png" alt="' + child.name + '" /></a</div>'
             else:
-                data = data + '<div class="image fit"><a href="/detail?path_id=' + str(child.en_id) + \
-                       '"><img src="/thumbnail?path_id=' + str(child.en_id) + '&w=400" alt="' + child.name + \
+                data = data + '<div class="image fit"><a href="/detail?path_id=' + str(child.db_id) + \
+                       '"><img src="/thumbnail?path_id=' + str(child.db_id) + '&w=400" alt="' + child.name + \
                        '" /></a></div>'
         return data
             
@@ -404,11 +406,13 @@ def getmorephotos():
 def detail():
     path_id = request.args.get('path_id')
     if path_id is None:
+        Logger.error("Error in /detail: " + path_id + " not found")
         return "Not found!"
     
     path_id = int(path_id)
-    entity = entity_id_map[path_id]
+    entity = entity_db_id_map[path_id]
     if entity is None:
+        Logger.error("Error in /detail: " + path_id + " not found")
         return "Not found!"
     
     if 'windowHeight' in session:
@@ -430,8 +434,9 @@ def detail():
     
     db = DataBase()
     boxes = db.get_boxes(entity.db_id)
-    print(boxes)
-    photopath = get_photo(entity.path, entity.en_id, wh, ww, boxes, withLabels=True)   
+    db.close()
+    Logger.debug("Detail boxes: " + str(boxes))
+    photopath = get_photo(entity.path, entity.db_id, wh, ww, boxes, with_labels=True)
     return render_template('detail.html', 
                            entity=entity,
                            width=ww,
@@ -442,15 +447,16 @@ def detail():
 
 @app.route('/thumbnail', methods=['GET'])
 def thumbnail():
+    global entity_db_id_map
     path_id = request.args.get('path_id')
     if path_id is not None:
         try:
             width = session['windowWidth'] / 4.0
-            entity = entity_id_map[int(path_id)]
-            filename = get_thumbnail(entity.path, entity.en_id, width)
+            entity = entity_db_id_map[int(path_id)]
+            filename = get_thumbnail(entity.path, entity.db_id, width)
             return send_file(filename, "image/png")
         except Exception as e:
-            print("Exception in thumbnail: " + str(e))
+            Logger.error("Exception in thumbnail: " + str(e))
     return send_file("static/img/icon_img_red_512px.png", "image/png")
 
 
@@ -609,7 +615,7 @@ def main(args):
         os.mkdir("static/tmp")
     
     global proc_pool
-    proc_pool = Pool(processes=1)
+    proc_pool = Pool(processes=4)
     
     app.logger.info('Listening on port 8000')
     app.run(host = '0.0.0.0', port=8000, debug=True)

@@ -73,7 +73,7 @@ $(document).ready(function() {
 				{% for entity in entities %}
 				{% if entity.is_dir %}
 				<div class="folder">
-					<a href="/?path_id={{ entity.en_id }}"><img width=24 src="static/img/icon_folder_red_32px.png" />{{ entity.name }}</a>
+					<a href="/?path_id={{ entity.db_id }}"><img width=24 src="static/img/icon_folder_red_32px.png" />{{ entity.name }}</a>
 				</div>
 				{% endif %} 
 				{% endfor %} 
@@ -81,13 +81,13 @@ $(document).ready(function() {
 				{% if loop.index <= maxfetch %} 
 				{% if entity.is_video %}
 				<div class="image fit">
-					<a href="/detail?path_id={{ entity.en_id }}"><img
+					<a href="/detail?path_id={{ entity.db_id }}"><img
 						src="static/img/icon_video_red_512px.png" alt="{{ entity.name }}" /></a>
 				</div>
 				{% elif not entity.is_dir %}
 				<div class="image fit">
-					<a href="/detail?path_id={{ entity.en_id }}"><img
-						src="/thumbnail?path_id={{ entity.en_id }}&w=400"
+					<a href="/detail?path_id={{ entity.db_id }}"><img
+						src="/thumbnail?path_id={{ entity.db_id }}&w=400"
 						alt="{{ entity.name }}" /></a>
 				</div>
 				{% endif %} 

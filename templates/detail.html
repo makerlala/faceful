@@ -47,7 +47,7 @@
 					<p>Box {{ loop.index }}: {{ box[6] }}</p>
 				{% if box[6] == "face" %}
 					<form action="/updatelabel" method="post" >
-						<input type="hidden" name="pathid" value="{{ entity.en_id }}" />
+						<input type="hidden" name="pathid" value="{{ entity.db_id }}" />
 						<input type="hidden" name="boxid" value="{{ box[0] }}" />
 						<input type="text" name="label" placeholder="{{ box[7] }}"/>
 						<input class="redbutton" type="submit" value="Update" />

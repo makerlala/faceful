@@ -21,6 +21,7 @@ import sys
 import re
 
 from database import DataBase
+from logger import Logger
 
 # the settings has to be in data folder
 PATH_TO_SETTINGS = "scripts/settings.conf"
@@ -98,11 +99,11 @@ class Settings:
                 elif pair[0] == "debug":
                     self.debug = (pair[1] == "True")
                 else:
-                    print("Unknown settings: " + str(pair[0]))
+                    Logger.warning("Unknown settings: " + str(pair[0]))
             except Exception as e:
-                print("Exception in parse settings for key " + pair[0] + ": " + str(e))
+                Logger.error("Exception in parse settings for key " + pair[0] + ": " + str(e))
                 sys.exit()
-        print("Settings look ok!")
+        Logger.debug("Settings look ok!")
                 
     def load_from_db(self):
         db = DataBase()
@@ -110,13 +111,13 @@ class Settings:
         self.parse_settings(pairs)
         
     def load_from_file(self):
-        print("Loading settings from " + PATH_TO_SETTINGS)
+        Logger.info("Loading settings from " + PATH_TO_SETTINGS)
         pairs = []
         with open(PATH_TO_SETTINGS,'rt') as f:
             for line in f.readlines():
                 tokens = re.sub(r"\s","", line).split("=")
                 if len(tokens) != 2:
-                    print("Error in settings file '" + PATH_TO_SETTINGS + "' at line '" + line + "'")
+                    Logger.error("Error in settings file '" + PATH_TO_SETTINGS + "' at line '" + line + "'")
                     break
                 pairs.append(tokens)
             f.close()
