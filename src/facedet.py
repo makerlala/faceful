@@ -42,17 +42,17 @@ from pprint import pprint
 
 from networking import Connection
 from settings import Settings
-from webbrowser import Opera
+from logger import Logger
 
 global settings
 settings = Settings.load()
 
-print("facenet source folder: " + settings.facenet_src)
+Logger.info("facenet source folder: " + settings.facenet_src)
 sys.path.append(settings.facenet_src)
 import align.detect_face
 import facenet
 
-print("tensorflow models source folder: " + settings.tensorflow_models_src)
+Logger.info("tensorflow models source folder: " + settings.tensorflow_models_src)
 sys.path.append(settings.tensorflow_models_src)
 from object_detection.utils import label_map_util
 
@@ -170,23 +170,23 @@ def get_square_box(x0, y0, x1, y1, max_w, max_h):
 
     return [x0, y0, x1, y1]
 
+
 '''Load an image into memory'''
 def load_image(image_path):
     try:
         img = misc.imread(image_path)
-    except (IOError, ValueError, IndexError) as e:        
-        print('{}: {}'.format(image_path, e))
+    except (IOError, ValueError, IndexError) as e:
+        Logger.error("Exception in load_image: " + image_path + " " + str(e))
         return None
-
     if img.ndim < 2:
-        print('Unable to align "%s"' % image_path)
+        Logger.error("Error in load_image: unable to align " + image_path)
         return None
     elif img.ndim == 2:
         img = facenet.to_rgb(img)
     elif len(img.shape) > 2 and img.shape[2] == 4:
         img = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
-    
     return img
+
 
 def get_roi(image, bounding_boxes):
     border = 20
@@ -215,15 +215,16 @@ def get_roi(image, bounding_boxes):
 
     return faces, boxes
 
+
 def facedet_as_service():
-    print("Running as a service...")
+    Logger.info("Running as a service...")
     # networking
     global sock
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
         sock.bind((HOST, PORT))
     except socket.error as msg:
-        print("Socket bind failed. Error code : " + str(msg[0]) + ", message " + msg[1])
+        Logger.error("Socket bind failed. Error code : " + str(msg[0]) + ", message " + msg[1])
         return
     sock.listen(10)
     
@@ -272,9 +273,9 @@ def facedet_as_service():
             conn, addr = sock.accept()
         except socket.error as msg:
             break
-        startTime = time.time()
+        start_time = time.time()
         img_data, img_paths = Connection.download_images(conn, in_mem = True)
-        print('Image download took {} s'.format(time.time() - startTime))
+        print('Image download took {} s'.format(time.time() - start_time))
         print('Received {} images'.format(len(img_data)))
 
         with open('trfcam.jpg', 'wb') as trfile:
@@ -283,7 +284,7 @@ def facedet_as_service():
 
         faces = []
         boxes = []
-        startTime = time.time()
+        start_time = time.time()
         with tf.Session(config = config, graph = g_detection) as sess:
             np.random.seed(777)
 
@@ -303,7 +304,9 @@ def facedet_as_service():
                 [h, w] = np.asarray(img.shape)[0:2]
                 # bounding_boxes, _ = align.detect_face.detect_face(img, minsize, pnet, rnet, onet, threshold, factor)
                 image_np_expanded = np.expand_dims(img, axis=0)
-                (bounding_boxes, scores, classes, num_detections) = sess.run([boxes_tensor, scores_tensor, classes_tensor, num_detections_tensor], feed_dict={image_tensor: image_np_expanded})
+                (bounding_boxes, scores, classes, num_detections) = sess.run(
+                    [boxes_tensor, scores_tensor, classes_tensor, num_detections_tensor],
+                    feed_dict={image_tensor: image_np_expanded})
                 bounding_boxes = np.squeeze(bounding_boxes)  
                 scores = np.squeeze(scores)                
                 nrof_faces = bounding_boxes.shape[0]
@@ -335,13 +338,13 @@ def facedet_as_service():
                     misc.imsave("roi" + str(n) + ".png", prew)
                     n = n + 1
                 
-        print('Face detection took {} s'.format(time.time() - startTime))
+        print('Face detection took {} s'.format(time.time() - start_time))
         nrof_faces = len(faces)
         print('Detected {} faces'.format(nrof_faces))
         if nrof_faces == 0:
             continue
 
-        startTime = time.time()
+        start_time = time.time()
         with tf.Session(config = config, graph = g_facenet) as sess:
             np.random.seed(666)
 
@@ -352,7 +355,7 @@ def facedet_as_service():
             best_class_indices = np.argmax(predictions, axis=1)
             best_class_probabilities = predictions[np.arange(len(best_class_indices)), best_class_indices]
                 
-            print('Face classification took {} s'.format(time.time() - startTime))
+            print('Face classification took {} s'.format(time.time() - start_time))
 
             with open('facedet_front.txt','wt') as outfile:
                 for i in range(len(best_class_indices)):
@@ -364,7 +367,7 @@ def facedet_as_service():
     print("Service stopped.")
 
 def facedet_objdet_as_service():
-    print("Running face and object detection as a service...")
+    Logger.info("Running face and object detection as a service...")
     
     # networking
     global sock
@@ -372,7 +375,7 @@ def facedet_objdet_as_service():
     try:
         sock.bind((HOST, PORT))
     except socket.error as msg:
-        print("Socket bind failed. Error code : " + str(msg[0]) + ", message " + msg[1])
+        Logger.error("Socket bind failed. Error code : " + str(msg[0]) + ", message " + msg[1])
         return
     sock.listen(10)
     
@@ -380,67 +383,71 @@ def facedet_objdet_as_service():
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
 
-    g_face_det = tf.Graph()
-    g_obj_det = tf.Graph()
+    g_facedet = tf.Graph()
+    g_objdet = tf.Graph()
     g_facenet = tf.Graph()
 
-    with g_face_det.as_default():
-        print('Loading face detection model: ' + PATH_TO_FACEDET_MODEL)
+    with g_facedet.as_default():
+        Logger.debug("Loading face detection model: " + PATH_TO_FACEDET_MODEL)
         od_graph_def = tf.GraphDef()
         with tf.gfile.GFile(PATH_TO_FACEDET_MODEL, 'rb') as fid:
             serialized_graph = fid.read()
             od_graph_def.ParseFromString(serialized_graph)
             tf.import_graph_def(od_graph_def, name='')        
-        image_tensor_face = g_face_det.get_tensor_by_name('image_tensor:0')
+        image_tensor_face = g_facedet.get_tensor_by_name('image_tensor:0')
         # Each box represents a part of the image where a particular object was detected.
-        boxes_tensor_face = g_face_det.get_tensor_by_name('detection_boxes:0')
+        boxes_tensor_face = g_facedet.get_tensor_by_name('detection_boxes:0')
         # Each score represent how level of confidence for each of the objects.
         # Score is shown on the result image, together with the class label.
-        scores_tensor_face = g_face_det.get_tensor_by_name('detection_scores:0')
-        classes_tensor_face = g_face_det.get_tensor_by_name('detection_classes:0')
-        num_detections_tensor_face = g_face_det.get_tensor_by_name('num_detections:0')
+        scores_tensor_face = g_facedet.get_tensor_by_name('detection_scores:0')
+        classes_tensor_face = g_facedet.get_tensor_by_name('detection_classes:0')
+        num_detections_tensor_face = g_facedet.get_tensor_by_name('num_detections:0')
 
-    with g_obj_det.as_default():
-        print('Loading object detection model: ' + PATH_TO_OBJDET_MODEL)
+    with g_objdet.as_default():
+        Logger.debug("Loading object detection model: " + PATH_TO_OBJDET_MODEL)
         od_graph_def = tf.GraphDef()
         with tf.gfile.GFile(PATH_TO_OBJDET_MODEL, 'rb') as fid:
             serialized_graph = fid.read()
             od_graph_def.ParseFromString(serialized_graph)
             tf.import_graph_def(od_graph_def, name='')
         # Definite input and output Tensors for detection_graph
-        image_tensor_obj = g_obj_det.get_tensor_by_name('image_tensor:0')
+        image_tensor_obj = g_objdet.get_tensor_by_name('image_tensor:0')
         # Each box represents a part of the image where a particular object was detected.
-        detection_boxes_obj = g_obj_det.get_tensor_by_name('detection_boxes:0')
+        detection_boxes_obj = g_objdet.get_tensor_by_name('detection_boxes:0')
         # Each score represent how level of confidence for each of the objects.
         # Score is shown on the result image, together with the class label.
-        detection_scores_obj = g_obj_det.get_tensor_by_name('detection_scores:0')
-        detection_classes_obj = g_obj_det.get_tensor_by_name('detection_classes:0')
-        num_detections_obj = g_obj_det.get_tensor_by_name('num_detections:0')
+        detection_scores_obj = g_objdet.get_tensor_by_name('detection_scores:0')
+        detection_classes_obj = g_objdet.get_tensor_by_name('detection_classes:0')
+        num_detections_obj = g_objdet.get_tensor_by_name('num_detections:0')
     
     with g_facenet.as_default():
-        print('Loading feature extraction model: ' + PATH_TO_FACENET_MODEL)
+        Logger.debug("Loading feature extraction model: " + PATH_TO_FACENET_MODEL)
         facenet.load_model(PATH_TO_FACENET_MODEL)
-        faces_placeholder = g_facenet.get_tensor_by_name("input:0")
-        embeddings = g_facenet.get_tensor_by_name("embeddings:0")
-        phase_train_placeholder = g_facenet.get_tensor_by_name("phase_train:0")
+        faces_placeholder = g_facenet.get_tensor_by_name('input:0')
+        embeddings = g_facenet.get_tensor_by_name('embeddings:0')
+        phase_train_placeholder = g_facenet.get_tensor_by_name('phase_train:0')
         embedding_size = embeddings.get_shape()[1]
-        print('Loading face classifier: ' + PATH_TO_FACENET_CLASSIFIER)
+        Logger.debug("Loading face classifier: " + PATH_TO_FACENET_CLASSIFIER)
         with open(PATH_TO_FACENET_CLASSIFIER, 'rb') as infile:
             (facenet_model, facenet_class_names) = pickle.load(infile)
     
     label_map = label_map_util.load_labelmap(PATH_TO_OBJDET_LABELS)
-    categories = label_map_util.convert_label_map_to_categories(label_map, max_num_classes=NUM_CLASSES_OBJDET, use_display_name=True)
+    categories = label_map_util.convert_label_map_to_categories(
+        label_map,
+        max_num_classes=NUM_CLASSES_OBJDET,
+        use_display_name=True)
     category_index = label_map_util.create_category_index(categories)
 
     ''' Server '''
     while server_flag:
-        print('Waiting for connections...')
+        Logger.info('Waiting for connections...')
         try:
             conn, addr = sock.accept()
         except socket.error as msg:
             break
         
-        startTime = time.time()
+        start_time = time.time()
+        img_data = []
         try:
             operation = conn.recv(32).decode()
             if operation == "train":
@@ -491,20 +498,22 @@ def facedet_objdet_as_service():
                 print('Saved classifier model to file "%s"' % PATH_TO_FACENET_CLASSIFIER)
                 
             elif operation == "objdet" or operation == "facerec":
-                conn.send("OK".code())
-                img_data, _ = Connection.download_images(conn, in_mem = True, close_conn = False)
+                conn.send("OK".encode())
+                img_data, _, img_ids = Connection.download_images(conn, in_mem = True, close_conn = False)
+                pprint(img_ids)
             else:
                 conn.send("No such operation".encode())
         except Exception as e:
             print(str(e))
-        print('Images download took {} s'.format(time.time() - startTime))
+        print('Images download took {} s'.format(time.time() - start_time))
         print('Received {} images'.format(len(img_data)))        
 
         send_buf = ""
-        startTime = time.time()
+        start_time = time.time()
         images = []
-        for img_buf in img_data:
-            if img_buf == None or len(img_buf) == 0:
+        for i in range(len(img_data)):
+            img_buf = img_data[i]
+            if img_buf is None or len(img_buf) == 0:
                 continue 
             img = cv2.imdecode(np.asarray(bytearray(img_buf), dtype=np.uint8), 0)
             if img.ndim < 2:
@@ -526,29 +535,38 @@ def facedet_objdet_as_service():
                 images.append(prew)
             
         if operation == "objdet":
-            for image_np_expanded in images:
+            for i in range(len(images)):
+                image_np_expanded = images[i]
+                img_id = img_ids[i]
                 # Face detection - running in both cases
-                with tf.Session(config = config, graph = g_face_det) as sess:
+                with tf.Session(config = config, graph = g_facedet) as sess:
                     np.random.seed(777)
-                    (bounding_boxes, scores, classes, num_detections) = sess.run([boxes_tensor_face, scores_tensor_face, classes_tensor_face, num_detections_tensor_face], feed_dict={image_tensor_face: image_np_expanded})
+                    (bounding_boxes, scores, classes, num_detections) = sess.run(
+                        [boxes_tensor_face, scores_tensor_face, classes_tensor_face, num_detections_tensor_face],
+                        feed_dict={image_tensor_face: image_np_expanded})
                     bounding_boxes = np.squeeze(bounding_boxes)  
                     scores = np.squeeze(scores)                 
                     for i in range(bounding_boxes.shape[0]):                    
                         if scores[i] < FACEDET_THRESH:
                             continue
-                    send_buf = send_buf + "face {} {} {} {};".format(bounding_boxes[i,1], bounding_boxes[i,0], bounding_boxes[i,3], bounding_boxes[i,2])
+                        send_buf = send_buf + "face;{};{};{};{};{}:".format(img_id,
+                            bounding_boxes[i,1], bounding_boxes[i,0], bounding_boxes[i,3], bounding_boxes[i,2])
                     
                 # Object detection
-                with tf.Session(config = config, graph = g_obj_det) as sess:
+                with tf.Session(config = config, graph = g_objdet) as sess:
                     np.random.seed(777)
-                    (bounding_boxes, scores, classes, num_detections) = sess.run([detection_boxes_obj, detection_scores_obj, detection_classes_obj, num_detections_obj], feed_dict={image_tensor_obj: image_np_expanded})
+                    (bounding_boxes, scores, classes, num_detections) = sess.run(
+                        [detection_boxes_obj, detection_scores_obj, detection_classes_obj, num_detections_obj],
+                        feed_dict={image_tensor_obj: image_np_expanded})
                     bounding_boxes = np.squeeze(bounding_boxes)  
                     scores = np.squeeze(scores)
                     classes = np.squeeze(classes)              
                     for i in range(bounding_boxes.shape[0]):                    
                         if scores[i] < FACEDET_THRESH:
                             continue
-                    send_buf = send_buf + "{} {} {} {} {};".format(category_index[int(classes[i])]['name'], bounding_boxes[i,1], bounding_boxes[i,0], bounding_boxes[i,3], bounding_boxes[i,2])                
+                        send_buf = send_buf + "{};{};{};{};{};{}:".format(
+                            category_index[int(classes[i])]['name'], img_id,
+                            bounding_boxes[i,1], bounding_boxes[i,0], bounding_boxes[i,3], bounding_boxes[i,2])
             
         elif operation == "facerec":
             with tf.Session(config = config, graph = g_facenet) as sess:
@@ -559,12 +577,14 @@ def facedet_objdet_as_service():
                 best_class_indices = np.argmax(predictions, axis=1)
                 best_class_probabilities = predictions[np.arange(len(best_class_indices)), best_class_indices]
                 for i in range(len(best_class_indices)):
-                    send_buf = send_buf +  "%d  %s %.3f;" % (i, facenet_class_names[best_class_indices[i]], best_class_probabilities[i])
-                    
-        print('Operation {} took {} s'.format(operation, time.time() - startTime))
+                    send_buf = send_buf +  "%d;%s;%.3f:" % (i,
+                                                             facenet_class_names[best_class_indices[i]],
+                                                             best_class_probabilities[i])
+        
+        send_buf = send_buf + "END"            
+        print('Operation {} took {} s'.format(operation, time.time() - start_time))
         print('Sending: ' + send_buf)
         conn.send(str.encode(send_buf))
-        conn.send(str.encode("END"))
 
     sock.close()
     print("Service stopped.")
@@ -624,7 +644,13 @@ def facedet_bulk(args):
             threshold = [ 0.8, 0.85, 0.85 ]  # three steps's threshold
             factor = 0.709 # scale factor
             
-            bounding_boxes = align.detect_face.bulk_detect_face(img_data, min_size/min_dim, pnet, rnet, onet, threshold, factor)
+            bounding_boxes = align.detect_face.bulk_detect_face(img_data,
+                                                                min_size/min_dim,
+                                                                pnet,
+                                                                rnet,
+                                                                onet,
+                                                                threshold,
+                                                                factor)
             
             print("Total size of face detection list: " + str(len(bounding_boxes)))
 
