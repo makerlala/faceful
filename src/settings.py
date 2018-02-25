@@ -25,6 +25,7 @@ from database import DataBase
 # the settings has to be in data folder
 PATH_TO_SETTINGS = "scripts/settings.conf"
 
+
 class Settings:
     def __init__(self):
         self.path_to_settings_file = PATH_TO_SETTINGS
@@ -36,6 +37,7 @@ class Settings:
         self.box_color = ""
         self.facedet_host = "127.0.0.1"
         self.facedet_port = 8888
+        self.facedet_batch = 1
         self.facenet_src = ""
         self.facenet_model = ""
         self.facenet_classifier = ""
@@ -46,10 +48,11 @@ class Settings:
         self.facedet_labels = ""
         self.tensorflow_models_src = ""
         self.tensorflow_object_detection_model = ""
+        self.tensorflow_object_detection_labels = ""
         self.info = False
         self.debug = False
     
-    def parse_settings(self,pairs):
+    def parse_settings(self, pairs):
         for pair in pairs:
             try:
                 if pair[0] == "photospath":
@@ -66,6 +69,8 @@ class Settings:
                     self.facedet_host = pair[1]
                 elif pair[0] == "facedetport":
                     self.facedet_port = int(pair[1])
+                elif pair[0] == "facedetbatch":
+                    self.facedet_batch = int(pair[1])
                 elif pair[0] == "facenetsrc":
                     self.facenet_src = self.project_path + pair[1]
                 elif pair[0] == "facenetmodel":

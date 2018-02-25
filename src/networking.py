@@ -22,6 +22,7 @@ import os
 
 CHUNK = 1024
 
+
 class Connection:
     def __init__(self, host, port):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -36,12 +37,12 @@ class Connection:
         return self.sock.recv(CHUNK).decode()
     
     '''Upload images through socket'''
-    def upload_images(self, images, in_mem = False):
+    def upload_images(self, images, images_id, in_mem=False):
         data_images = ""
         total_images = len(images)
         if in_mem:
             for i in range(total_images):
-                data_images = data_images + "png," + str(len(images[i])) + ";"  
+                data_images = data_images + "png," + str(len(images[i])) + "," + str(images_id[i]) + ";"
         else:
             for i in range(total_images):
                 tokens = images[i].split(".")
@@ -50,7 +51,7 @@ class Connection:
                 else:
                     img_type = "na"
                 img_size = os.path.getsize(images[i])
-                data_images = data_images + img_type + "," + str(img_size) + ";"
+                data_images = data_images + img_type + "," + str(img_size) + "," + str(images_id[i]) + ";"
                      
         try:
             # send images information
@@ -110,6 +111,7 @@ class Connection:
     def download_images(conn, in_mem = False, close_conn = True):
         img_data = []
         img_paths = []
+        img_ids = []
     
         try:
             data = conn.recv(2048)
@@ -123,6 +125,7 @@ class Connection:
                 print("Getting a " + image[0].lower() + " image of size " + image[1])        
                 img_name = "img" + str(n) + "." + image[0].lower()
                 img_size = int(image[1])
+                img_ids.append(image[2])
                 img_buf = b''
                 curr_size = 0
                 if img_size <= CHUNK:
@@ -150,4 +153,4 @@ class Connection:
         except Exception as e:
             print(e)
     
-        return img_data, img_paths
+        return img_data, img_paths, img_ids

@@ -153,8 +153,6 @@ def update_database():
     
     img_paths = []
     
-    conn = Connection(settings.facedet_host, settings.facedet_port)
-    
     for (dirpath, dirnames, filenames) in os.walk(settings.path):
         for f in filenames:
             if is_photo(f):
@@ -162,8 +160,10 @@ def update_database():
     
     n = len(img_paths)
     i = 1.0
+    img_ids_to_uplod = []
+    img_paths_to_upload = {}
     for img_path in img_paths:
-        print("Progress {}".format(100.8*i/n))
+        print("Progress {}".format(100.0*i/n))
         i = i + 1.0      
         img_id = db.get_photo_id(img_path)
         if img_id != -1:
@@ -172,8 +172,20 @@ def update_database():
 
         img_id = db.insert_photo(img_path)
         print(img_path)
+        img_ids_to_uplod.append(img_id)
+        img_paths_to_upload[img_id] = img_path
+
+    if len(img_ids_to_uplod) == 0:
+        db.close()
+        return
+
+    for i in range(int(len(img_paths_to_upload)/settings.facedet_batch) + 1):
+        start = i * settings.facedet_batch
+        end = min(len(img_paths_to_upload), (i+1) * settings.facedet_batch)
+        img_paths = [img_paths_to_upload[id] for id in img_ids_to_uplod[start:end]]
+        conn = Connection(settings.facedet_host, settings.facedet_port)
         conn.send_message("objdet")
-        conn.upload_images([img_path])
+        conn.upload_images(img_paths, img_ids_to_uplod[start:end])
         ret = conn.get_response()
         print("Got " + ret)       
         records = ret.split(';')
@@ -183,9 +195,9 @@ def update_database():
             tokens = record.split(' ')
             print(record + str(len(tokens)))
             db.insert_box(img_id, tokens[1], tokens[2], tokens[3], tokens[4], tokens[0])
-            
+        conn.close()
+
     db.close()
-    conn.close()
 
 
 def train_classifier_callback(result):
