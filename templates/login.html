@@ -1,0 +1,102 @@
+<!DOCTYPE HTML>
+<!--
+	Radius by TEMPLATED
+	templated.co @templatedco
+	Released for free under the Creative Commons Attribution 3.0 license (templated.co/license)
+-->
+<html>
+<head>
+<title>faceful - my smart photo gallery</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="stylesheet" href="static/assets/css/main.css" />
+<!-- Pre-defined Scripts -->
+<script src="static/assets/js/jquery.min.js"></script>
+<script src="static/assets/js/skel.min.js"></script>
+<script src="static/assets/js/util.js"></script>
+<script src="static/assets/js/main.js"></script>
+<script src="static/assets/js/gallery.js"></script>
+<!--  My Scripts -->
+<script type="text/javascript">
+/*
+ * Fetch more photos on demand.
+ */
+function fetchMore() {
+	if ($(window).scrollTop() >= $(document).height() - $(window).height() - 300) {
+		$(window).unbind('scroll', fetchMore);
+		$.post('/getmorephotos', { path_id : "{{ path_id }}" }, function(data) {
+			$(data).insertBefore($('#placeHolder'));
+			$(window).bind('scroll', fetchMore);
+		});
+	}
+}
+$(document).ready(function() {
+	$(window).bind('scroll', fetchMore);
+});
+</script>
+</head>
+<body onload="init()">
+
+	<!-- Main -->
+	<div id="main">
+		<div class="inner">
+			<div class="content">
+				<div class="login-box">
+					<h2><font color="#e74c3c">Welcome to <i>faceful</i></font></h2>
+					<br/>
+					<form action="/login" method="POST">
+						<input type="text" name="name" placeholder="User Name">
+						<br/>
+						<input type="password" name="passwd" placeholder="********">
+						<br/>
+						<input type="submit" value="Login" class="redbutton">
+						<br/>
+						<label>{{ message }}</label>
+					</form>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<!-- Footer -->
+	<footer id="footer">
+		<a href="#" class="info fa fa-info-circle"><span>About</span></a>
+		<div class="inner">
+			<div class="content">
+				<h3>faceful - A Smart Photo Gallery with Object and Face Recognition</h3>
+				<p>This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.</p>
+
+				<p>This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.</p>
+			</div>
+			<div class="copyright">
+				<h3>Follow us</h3>
+				<ul class="icons">
+					<li><a href="https://github.com/makerlala" class="icon fa-github"><span
+							class="label">Github</span></a></li>
+					<li><a href="http://makerlala.com/" class="icon fa-globe"><span
+							class="label">Web</span></a></li>
+					<li><a href="http://makerlala.com/blog" class="icon fa-wordpress"><span
+							class="label">Blog</span></a></li>
+				</ul>
+				Design: <a href="https://templated.co">TEMPLATED</a>. Images: <a
+					href="https://unsplash.com/">Unsplash</a>.
+				<div>
+					Icons made by <a
+						href="https://www.flaticon.com/authors/gregor-cresnar"
+						title="Gregor Cresnar">Gregor Cresnar</a> from <a
+						href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a>
+					is licensed by <a
+						href="http://creativecommons.org/licenses/by/3.0/"
+						title="Creative Commons BY 3.0" target="_blank">CC 3.0 BY</a>
+				</div>
+			</div>
+		</div>
+	</footer>
+</body>
+</html>

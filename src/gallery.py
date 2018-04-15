@@ -27,6 +27,7 @@ from flask import Flask, session, request, redirect
 from flask import send_file
 from flask.templating import render_template
 from multiprocessing import Pool
+from werkzeug.security import check_password_hash
 
 proc_pool = None
 training_in_progress = False
@@ -560,8 +561,8 @@ def ai():
     global training_in_progress
 
     db = DataBase()
-    marked_objects = db.get_boxes_with_labels(labelIdx = 6)
-    marked_faces = db.get_boxes_with_labels(labelIdx = 7)
+    marked_objects = db.get_boxes_with_labels(label_index = 6)
+    marked_faces = db.get_boxes_with_labels(label_index = 7)
 
     if not training_in_progress:
         can_train = True
@@ -595,6 +596,49 @@ def train():
             print("Training failure: " + str(e))
 
     return redirect("/ai")
+
+
+
+def check_login(name, passwd):
+    db = DataBase()
+    db_passwd = db.get_password(name)
+    return check_password_hash(db_passwd, passwd)
+
+'''Check login credentials from session'''
+def check_session_login():
+    if "un" in session:
+        name = session["un"]
+    else:
+        name = None
+    if "pw" in session:
+        passwd = session["pw"]
+    else:
+        passwd = None
+    if not name or not passwd:
+        return False
+    return check_login(name, passwd)
+
+
+@app.route('/login', methods=['GET'])
+def show_login():
+    if check_session_login():
+        return redirect("/")
+    return render_template('login.html', message="")
+
+
+@app.route('/login', methods=['POST'])
+def process_login():
+    name = request.form.get('name')
+    passwd = request.form.get('passwd')
+    if not name or not passwd:
+        return render_template('login.html', message="Empty user name or password")
+
+    if check_login(name, passwd):
+        session["un"] = name
+        session["pw"] = passwd
+        return redirect("/")
+
+    return render_template('login.html', message="Invalid user name or password")
 
 
 def main(args):

@@ -34,29 +34,82 @@ class DataBase:
 
     '''Create all tables'''
     def create(self):
+        # Table for users (only one user)
+        try:
+            self.cursor.execute('''CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY, name TEXT UNIQUE NOT NULL, 
+            passwd TEXT NOT NULL)''')
+        except Exception as e:
+            Logger.fatal("Exception in creating users db: " + str(e))
+
         try:
             self.cursor.execute('''CREATE TABLE IF NOT EXISTS dirs(id INTEGER PRIMARY KEY, path TEXT unique)''')
         except Exception as e:
             Logger.fatal("Exception in creating dirs db: " + str(e))
+
+        # Table for photos
         try:
             self.cursor.execute('''CREATE TABLE IF NOT EXISTS photos(id INTEGER PRIMARY KEY, 
             path TEXT UNIQUE, hash TEXT)''')
         except Exception as e:
             Logger.fatal("Exception in creating photos db: " + str(e))
+
+        # Table for objects (marked by boxes)
         try:
             self.cursor.execute('''CREATE TABLE IF NOT EXISTS boxes(id INTEGER PRIMARY KEY, photoid INTEGER, 
             x0 REAL, y0 REAL, x1 REAL, y1 REAL, label TEXT, alias TEXT, learned INTEGER DEFAULT 0, 
             FOREIGN KEY(photoid) REFERENCES photos(id))''')
         except Exception as e:
             Logger.fatal("Exception in creating boxes db: " + str(e))
+
+        # Table for stories
+        try:
+            self.cursor.execute('''CREATE TABLE IF NOT EXISTS stories(id INTEGER PRIMARY KEY, photoid INTEGER,
+            story TEXT, FOREIGN KEY(photoid) REFERENCES photos(id))''')
+        except Exception as e:
+            Logger.fatal("Exception in creating stories db: " + str(e))
+
+        # Table for settings
         try:
             self.cursor.execute('''CREATE TABLE IF NOT EXISTS settings(key PRIMARY KEY UNIQUE, val TEXT)''')
         except Exception as e:
             Logger.fatal("Exception in creating settings db: " + str(e))
+
         try:
             self.db.commit()
         except Exception as e:
             Logger.fatal("Exception in db commit: " + str(e))
+
+    '''Get user's hashed password'''
+    def get_password(self, name):
+        try:
+            self.cursor.execute('''SELECT * FROM users WHERE name = ?''', (name,))
+            rows = self.cursor.fetchall()
+            if len(rows) < 1:
+                return None
+            else:
+                return rows[0][2]
+        except Exception as e:
+            Logger.error("Exception in db select: " + str(e))
+        return None
+
+    '''Add new user or update existing user'''
+    def set_user(self, name, passwd):
+        if self.get_login(name):
+            # user exists, just update password
+            try:
+                self.cursor.execute('''UPDATE users SET passwd = ? WHERE name = ?''', (name, passwd,))
+                self.db.commit()
+            except Exception as e:
+                Logger.error("Exception in updating user's password: " + str(e))
+                return False
+        else:
+            try:
+                self.cursor.execute('''INSERT INTO users(name, passwd) VALUES(?, ?)''', (name, passwd))
+                self.db.commit()
+            except Exception as e:
+                Logger.error("Exception in inserting new user: " + str(e))
+                return False
+        return True
 
     '''Get photo id'''
     def get_photo_id(self, photo_path):
@@ -178,7 +231,34 @@ class DataBase:
             self.db.commit()
         except Exception as e:
             print(e)
-                
+
+    def get_story(self, photo_id):
+        try:
+            self.cursor.execute('''SELECT * FROM stories WHERE photoid = ?''', (photo_id,))
+            rows = self.cursor.fetchall()
+            return rows[0]
+        except Exception as e:
+            print(e)
+        return None
+
+    def add_story(self, photo_id, story_text):
+        story = self.get_story(photo_id)
+        if story:
+            try:
+                self.cursor.execute('''UPDATE stories SET story = ? WHERE photoid = ?''', (story_text, photo_id,))
+                self.db.commit()
+            except Exception as e:
+                print(e)
+        else:
+            try:
+                self.cursor.execute('''INSERT INTO stories(photoid, story) VALUES(?,?)''', (photo_id, story_text))
+                self.db.commit()
+            except Exception as e:
+                print(e)
+            story = self.get_story(photo_id)
+        # return id
+        return story[0]
+
     def close(self):
         self.db.close()
 
