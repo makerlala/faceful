@@ -1,6 +1,8 @@
 # faceful
 A Photo Gallery with Face Recognition
 
+## Warning: this is an alpha release. Please check for the latest release on our github page.
+
 ## Get started
 
 This gallery has two main components, (i) a web server based on Python Flask and (ii) an AI image processing server running on Tensorflow. 
@@ -10,6 +12,8 @@ use a machine with GPU (e.g. a server with GPU or an Nvidia Jetson TX1/TX2) for 
 
 ### Install
 
+On x86-64 systems with Nvidia GPU, make sure you have installed CUDA 9.0 (https://developer.nvidia.com/cuda-90-download-archive) and cuDNN 7.0.5 (https://developer.nvidia.com/rdp/cudnn-download).
+ 
 Create a folder where all related code and projects will be downloaded, then clone this repository. For example, in your home directory:
 ```
 cd ~
@@ -19,15 +23,15 @@ git clone https://github.com/makerlala/faceful.git
 Copy the settings template and add the path to your photos and the path to this project folder.
 ```
 cd faceful/scripts
-cp cp settings.conf.template settings.conf
+cp settings.conf.template settings.conf
 vim settings.conf
 ```
 
-Create a models folder and download pre-trained model 20170512-110547 from facenet repository, https://github.com/davidsandberg/facenet. 
-Unzip this model in models folder. Next, you can run install.sh from scripts folder. This will take care of the installation. If you do not 
+Create a folder called ``models`` and download pre-trained model ``20170512-110547`` from facenet repository, https://github.com/davidsandberg/facenet. 
+Unzip this model in ``models`` folder. Next, you can run install.sh from scripts folder. This will take care of the installation. If you do not 
 have a GPU, just install with CPU-only support:
 ```
-./install.sgh -cpu
+./install.sh -cpu
 ```
 else
 ```
@@ -98,8 +102,6 @@ Thirdly, you have to configure the actions on Google Cloud (see the blog post fo
 Lastly, run the app with ```./start-smart-home.sh```
 
 Enjoy!
-
-## Warning: this is an alpha release. Please check for the latest release on our github page.
 
 ## Credits
 Webpage template Radius is created by TEMPLATED (https://templated.co/radius) and released for free under the Creative Commons Attribution 3.0 license (https://templated.co/license)

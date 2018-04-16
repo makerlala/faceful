@@ -29,7 +29,11 @@ from flask.templating import render_template
 from multiprocessing import Pool
 from werkzeug.security import check_password_hash
 
+# a pool of async processes
 proc_pool = None
+# Object detection in progress
+detection_in_progress = False
+# Face classifier training in progress
 training_in_progress = False
 
 from networking import Connection
@@ -104,7 +108,7 @@ class Entity:
         global entity_db_id_map
 
         if not os.path.isdir(path):
-            print("Path not found: " + path)
+            Logger.fatal("Path not found: " + path)
             sys.exit(1)
         root = Entity(vpath, name, root_en_id, -1, True, False)
         root_en_id = root_en_id + 1
@@ -113,8 +117,8 @@ class Entity:
             file_path = os.path.join(path, file)
             virtual_file_path = vpath + "/" + file
             if os.path.isdir(file_path):
+                db_id = -1 * root_en_id
                 child = Entity.build_tree(file_path, virtual_file_path, db, file)
-                root.add_child(child)
             elif file.startswith("."):
                 continue
             elif is_video(file) or is_photo(file):
@@ -124,12 +128,15 @@ class Entity:
                     child.prev_id = prev_child.en_id
                     prev_child.next_id = child.en_id
                 prev_child = child
-                root.add_child(child)
-                root_en_id = root_en_id + 1
-                entity_db_id_map[db_id] = child
+
             else:
-                if settings.info:
-                    print("Unknown file: " + file_path)
+                Logger.error("Unknown file: " + file_path)
+                continue
+            root_en_id = root_en_id + 1
+            child.db_id = db_id
+            entity_db_id_map[db_id] = child
+            root.add_child(child)
+            Logger.info("Photo path: " + file_path + " DB id: " + str(db_id))
         return root
 
 
@@ -141,6 +148,13 @@ def is_photo(f):
 def is_video(f):
     f = str.lower(f)
     return f.endswith(".mpg") or f.endswith(".avi") or f.endswith(".mp4") or f.endswith(".mov") or f.endswith(".wmv")
+
+
+def update_database_callback(result):
+    global detection_in_progress
+
+    detection_in_progress = False
+    Logger.info("Detection (+update database) is done.")
 
 
 def update_database():
@@ -170,7 +184,7 @@ def update_database():
             continue
 
         img_id = db.insert_photo(img_path)
-        print(img_path, img_id)
+        Logger.debug("Photo inserted in db: {}, {}".format(img_path, img_id))
         img_ids_to_uplod.append(img_id)
         img_paths_to_upload[img_id] = img_path
 
@@ -186,7 +200,7 @@ def update_database():
         conn.send_message("objdet")
         conn.upload_images(img_paths, img_ids_to_uplod[start:end])
         ret = conn.get_response()
-        print("Got " + ret)       
+        Logger.debug("Got " + ret)
         records = ret.split(':')
         for record in records:
             if record == "END":
@@ -206,13 +220,13 @@ def train_classifier_callback(result):
     global training_in_progress
 
     training_in_progress = False
-    print("Training classifier is done.")
+    Logger.info("Training classifier is done.")
 
 
 def train_classifier():
     global settings
 
-    print("Start training classifier")
+    Logger.info("Start training classifier.")
     conn = Connection(settings.facedet_host, settings.facedet_port)
     db = DataBase()
     marked_faces = db.get_boxes_with_labels(labelIdx = 7)
@@ -233,23 +247,23 @@ def train_classifier():
             try:
                 faces[alias].append(cv2.imencode(".png", img)[1].tostring())
             except Exception as e:
-                print("Exception in train_classifier" + str(e))    
+                Logger.error("Exception in train_classifier" + str(e))
     
     resp = conn.send_message("train")
-    print(resp)
+    Logger.debug(resp)
     if resp != "OK":
         return
     
     data = "{} {}".format(len(faces.keys()), settings.face_cls_training_threshold)
-    print("Send: " + data)
+    Logger.debug("Send: " + data)
     resp = conn.send_message(data)
-    print(resp)
+    Logger.debug(resp)
     if resp != "OK":
         return
     
     for alias in faces.keys():
         resp = conn.send_message(alias)
-        print(resp)
+        Logger.debug(resp)
         if resp != "OK":
             return
         conn.upload_images(faces[alias], in_mem = True)
@@ -286,11 +300,11 @@ def scale_photo(photo_path, photo_id, scaled_h, scaled_w, cached_photo_path, min
 def scale_photo_with_boxes(photo_path, photo_id, scaled_h, scaled_w, cached_photo_path, boxes):
     img = cv2.imread(photo_path)
     [h, w] = np.asarray(img.shape)[0:2]
-    print("1 h {} w {}".format(h, w))
+    Logger.debug("1 h {} w {}".format(h, w))
     ratio = min(scaled_h/h, scaled_w/w)
     img = cv2.resize(img, (0,0), fx=ratio, fy=ratio)
     [h, w] = np.asarray(img.shape)[0:2]
-    print("2 h {} w {}".format(h, w))
+    Logger.debug("2 h {} w {}".format(h, w))
     n = 1
     for box in boxes:
         try:
@@ -350,6 +364,9 @@ app.secret_key = 'uaYX3T283RGDW384T1EGVas1363'
 
 @app.route('/', methods=['GET'])
 def index():
+    if not check_session_login():
+        return redirect("/login")
+
     global settings
     global root_entity
     global entity_db_id_map
@@ -373,6 +390,9 @@ def index():
 
 @app.route('/getmorephotos', methods=['POST'])
 def getmorephotos():
+    if not check_session_login():
+        return redirect("/login")
+
     global settings
     global root_entity
     global entity_db_id_map
@@ -405,6 +425,9 @@ def getmorephotos():
 
 @app.route('/detail', methods=['GET'])
 def detail():
+    if not check_session_login():
+        return redirect("/login")
+
     path_id = request.args.get('path_id')
     if path_id is None:
         Logger.error("Error in /detail: " + path_id + " not found")
@@ -448,6 +471,9 @@ def detail():
 
 @app.route('/thumbnail', methods=['GET'])
 def thumbnail():
+    if not check_session_login():
+        return redirect("/login")
+
     global entity_db_id_map
     path_id = request.args.get('path_id')
     if path_id is not None:
@@ -464,18 +490,20 @@ def thumbnail():
 # This is called by the client to report browser dimensions
 @app.route('/reportsize', methods=['POST'])
 def reportsize():
+    if not check_session_login():
+        return redirect("/login")
+
     try:
         session['documentHeight'] = int(request.form.get('document_height'))
         session['documentWidth'] = int(request.form.get('document_width'))
         session['windowHeight'] = int(request.form.get('window_height'))
         session['windowWidth'] = int(request.form.get('window_width'))
     except Exception as e:
-        print("In reportsize: " + str(e))
+        Logger.error("In reportsize: " + str(e))
 
-    # app.logger.info("document=(%s,%s), window=(%s,%s)",'
-    print("document=(%s,%s), window=(%s,%s)", 
-                    session['documentHeight'], session['documentHeight'], 
-                    session['windowWidth'], session['windowHeight'])
+    Logger.debug("document=({},{}), window=({},{})".format(
+                 session['documentHeight'], session['documentHeight'],
+                 session['windowWidth'], session['windowHeight']))
 
     return 'OK'
     
@@ -485,6 +513,10 @@ def search():
     global settings
     global root_entity
     global entity_db_id_map
+
+    if not check_session_login():
+        return redirect("/login")
+
     if request.method == 'POST':
         data = request.form.get('query')
     else:
@@ -498,10 +530,10 @@ def search():
     db = DataBase()
     photo_ids = []
     for label in str(data).split(sep="and"):
-        print("Search token: " + label)
-        if label.startswith("face"):
+        Logger.debug("Search token: " + label)
+        if label.startswith("face") and len(label) > 4:
             alias = label.replace("face ", "")
-            print("Search alias: " + alias)
+            Logger.debug("Search alias: " + alias)
             if alias != "":
                 some_photo_ids = db.get_photos_with_alias(alias)
         else:
@@ -511,8 +543,8 @@ def search():
         else:
             intersection = [val for val in photo_ids if val in some_photo_ids]
             photo_ids = intersection
-    
-    print("Found " + str(len(photo_ids)) + " photos with label " + label)
+
+    Logger.debug("Found " + str(len(photo_ids)) + " photos with label " + label)
     entities = []
     for photo_id in photo_ids:
         # entity = root_entity.find_entity_in_tree_with_db_id(photo_id[0])
@@ -521,7 +553,7 @@ def search():
             if entity is not None:
                 entities.append(entity)
         else:
-            print("Error: entity " + str(photo_id[0]) + " not found in the map")
+            Logger.error("Entity " + str(photo_id[0]) + " not found in the map")
     return render_template('index.html', 
                            entities=entities,
                            path_id=-1,
@@ -530,6 +562,9 @@ def search():
 
 @app.route('/updatelabel', methods=['POST'])
 def updatelabel():
+    if not check_session_login():
+        return redirect("/login")
+
     photoid = request.form.get("pathid")
     boxid = request.form.get("boxid")
     label = request.form.get("label")
@@ -541,6 +576,9 @@ def updatelabel():
 
 @app.route('/deletecache', methods=['POST'])
 def deletecache():
+    if not check_session_login():
+        return redirect("/login")
+
     path = "static/tmp"
     files = os.listdir(path)
     for file in files:
@@ -551,6 +589,9 @@ def deletecache():
 
 @app.route('/settings', methods=['GET'])
 def settings():
+    if not check_session_login():
+        return redirect("/login")
+
     # TODO
     return render_template('settings.html')
 
@@ -559,6 +600,9 @@ def settings():
 def ai():
     global settings
     global training_in_progress
+
+    if not check_session_login():
+        return redirect("/login")
 
     db = DataBase()
     marked_objects = db.get_boxes_with_labels(label_index = 6)
@@ -578,7 +622,8 @@ def ai():
                            marked_faces=marked_faces,
                            faces_threshold=settings.face_cls_training_threshold,
                            can_train=can_train,
-                           training_in_progress=training_in_progress)
+                           training_in_progress=training_in_progress,
+                           detection_in_progress=detection_in_progress)
 
 
 @app.route('/train', methods=['POST'])
@@ -586,23 +631,49 @@ def train():
     global proc_pool
     global training_in_progress
 
+    if not check_session_login():
+        return redirect("/login")
+
     if not training_in_progress:
         training_in_progress = True
         try:
             proc_pool.apply_async(train_classifier, callback=train_classifier_callback)
-            proc_pool.close()
+            # proc_pool.close()
         except Exception as e:
             training_in_progress = False
-            print("Training failure: " + str(e))
+            Logger.error("Training failure: " + str(e))
 
     return redirect("/ai")
 
 
+@app.route('/detect', methods=['POST'])
+def detect():
+    global proc_pool
+    global detection_in_progress
 
+    if not check_session_login():
+        return redirect("/login")
+
+    if not detection_in_progress:
+        detection_in_progress = True
+        try:
+            proc_pool.apply_async(update_database, callback=update_database_callback)
+            # proc_pool.close()
+        except Exception as e:
+            detection_in_progress = False
+            Logger.error("Failure in running detection: " + str(e))
+
+    return redirect("/ai")
+
+
+'''Check login credentials against DB'''
 def check_login(name, passwd):
     db = DataBase()
     db_passwd = db.get_password(name)
+    if not db_passwd:
+        return False
     return check_password_hash(db_passwd, passwd)
+
 
 '''Check login credentials from session'''
 def check_session_login():

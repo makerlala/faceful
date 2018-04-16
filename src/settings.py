@@ -19,6 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 import sys
 import re
+import os
 
 from database import DataBase
 from logger import Logger
@@ -59,7 +60,7 @@ class Settings:
                 if pair[0] == "photospath":
                     self.path = pair[1]
                 elif pair[0] == "projectpath":
-                    self.project_path = pair[1]
+                    self.set_project_path(pair[1])
                 elif pair[0] == "fresh":
                     self.fresh = (pair[1] == "True")
                 elif pair[0] == "maxphotofetch":
@@ -73,27 +74,27 @@ class Settings:
                 elif pair[0] == "facedetbatch":
                     self.facedet_batch = int(pair[1])
                 elif pair[0] == "facenetsrc":
-                    self.facenet_src = self.project_path + pair[1]
+                    self.facenet_src = self.append_to_project_path(pair[1])
                 elif pair[0] == "facenetmodel":
-                    self.facenet_model = self.project_path + pair[1]
+                    self.facenet_model = self.append_to_project_path(pair[1])
                 elif pair[0] == "facenetclassifier":
-                    self.facenet_classifier = self.project_path + pair[1]
+                    self.facenet_classifier = self.append_to_project_path(pair[1])
                 elif pair[0] == "facenetclassifierimages":
-                    self.facenet_classifier_images = self.project_path + pair[1]
+                    self.facenet_classifier_images = self.append_to_project_path(pair[1])
                 elif pair[0] == "facenetclassifiertrainimagesize":
                     self.facenet_classifier_image_size = int(pair[1])
                 elif pair[0] == "facenetclassifiertrainbatchsize":
                     self.facenet_classifier_batch_size = int(pair[1])
                 elif pair[0] == "tensorflowmodelssrc":
-                    self.tensorflow_models_src = self.project_path + pair[1]
+                    self.tensorflow_models_src = self.append_to_project_path(pair[1])
                 elif pair[0] == "tensorflowobjectdetectionmodel":
-                    self.tensorflow_object_detection_model = self.project_path + pair[1]
+                    self.tensorflow_object_detection_model = self.append_to_project_path(pair[1])
                 elif pair[0] == "tensorflowobjectdetectionlabels":
-                    self.tensorflow_object_detection_labels = self.project_path + pair[1]
+                    self.tensorflow_object_detection_labels = self.append_to_project_path(pair[1])
                 elif pair[0] == "facedetmodel":
-                    self.facedet_model = self.project_path + pair[1]
+                    self.facedet_model = self.append_to_project_path(pair[1])
                 elif pair[0] == "facedetlabels":
-                    self.facedet_labels = self.project_path + pair[1]
+                    self.facedet_labels = self.append_to_project_path(pair[1])
                 elif pair[0] == "info":
                     self.info = (pair[1] == "True")
                 elif pair[0] == "debug":
@@ -122,7 +123,21 @@ class Settings:
                 pairs.append(tokens)
             f.close()
         self.parse_settings(pairs)
-        
+
+    def set_project_path(self, path):
+        if not path.endswith("/"):
+            self.project_path = path + "/"
+        else:
+            self.project_path = path
+        if not os.path.isdir(self.project_path):
+            Logger.fatal("Project path not found: " + self.project_path)
+
+    def append_to_project_path(self, relative_path):
+        path = self.project_path + relative_path
+        if not os.path.isdir(self.project_path):
+            Logger.fatal("Not a folder: " + path)
+        return path
+
     @staticmethod
     def load():
         set_file = Settings()

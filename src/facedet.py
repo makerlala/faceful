@@ -85,7 +85,7 @@ server_flag = True
 def sigint_handler(signal, frame):
     global sock
     global server_flag
-    print('You pressed Ctrl+C. Server will stop.')
+    Logger.info('You pressed Ctrl+C. Server will stop.')
     sock.shutdown(socket.SHUT_WR)
     sock.close()
     server_flag = False
@@ -115,6 +115,7 @@ def get_square_box_v1(x0, y0, x1, y1, max_w, max_h):
             y1 = y1 + (wb - hb)
 
     return [x0, y0, x1, y1]
+
 
 ''' Get a square bounding box by extending the existing box 
 both to the left and right, or both to the top and bottom, 
@@ -205,7 +206,7 @@ def get_roi(image, bounding_boxes):
         y1 = min(int(det[3]) + border, h-1)
                     
         [x0, y0, x1, y1] = get_square_box(x0, y0, x1, y1, w, h)
-        print(str(x0) + " " + str(y0) + " " + str(x1) + " " + str(y1))                    
+        Logger.debug(str(x0) + " " + str(y0) + " " + str(x1) + " " + str(y1))
         cropped = image[y0:y1,x0:x1,:]
         scaled = misc.imresize(cropped, (160, 160), interp='bilinear')
         prew = facenet.prewhiten(scaled)
@@ -236,7 +237,7 @@ def facedet_as_service():
     g_facenet = tf.Graph()
 
     with g_detection.as_default():
-        print('Loading face detection model')
+        Logger.info('Loading face detection model')
         od_graph_def = tf.GraphDef()
         with tf.gfile.GFile(PATH_TO_FACEDET_MODEL, 'rb') as fid:
             serialized_graph = fid.read()
@@ -252,13 +253,13 @@ def facedet_as_service():
         num_detections_tensor = g_detection.get_tensor_by_name('num_detections:0')
 
     with g_facenet.as_default():
-        print('Loading feature extraction model')
+        Logger.info('Loading feature extraction model')
         facenet.load_model(PATH_TO_FACENET_MODEL)
         images_placeholder = g_facenet.get_tensor_by_name("input:0")
         embeddings = g_facenet.get_tensor_by_name("embeddings:0")
         phase_train_placeholder = g_facenet.get_tensor_by_name("phase_train:0")
         embedding_size = embeddings.get_shape()[1]
-        print('Loading face classifier: ' + PATH_TO_FACENET_CLASSIFIER)
+        Logger.info('Loading face classifier: ' + PATH_TO_FACENET_CLASSIFIER)
         with open(PATH_TO_FACENET_CLASSIFIER, 'rb') as infile:
             (model, class_names) = pickle.load(infile)
 # 1. Detect Face
@@ -268,15 +269,15 @@ def facedet_as_service():
 #    factor = 0.709 # scale factor
 
     while server_flag:
-        print('Waiting for a connection...')
+        Logger.info('Waiting for a connection...')
         try:
             conn, addr = sock.accept()
         except socket.error as msg:
             break
         start_time = time.time()
         img_data, img_paths = Connection.download_images(conn, in_mem = True)
-        print('Image download took {} s'.format(time.time() - start_time))
-        print('Received {} images'.format(len(img_data)))
+        Logger.info('Image download took {} s'.format(time.time() - start_time))
+        Logger.info('Received {} images'.format(len(img_data)))
 
         with open('trfcam.jpg', 'wb') as trfile:
             trfile.write(img_data[0])
@@ -294,7 +295,7 @@ def facedet_as_service():
             for img_buf in img_data:                
                 img = cv2.imdecode(np.asarray(bytearray(img_buf), dtype=np.uint8), 0)
                 if img.ndim < 2:
-                    print('Unable to align image')
+                    Logger.error('Unable to align image')
                     continue
                 elif img.ndim == 2:
                     img = facenet.to_rgb(img)
@@ -337,10 +338,10 @@ def facedet_as_service():
                     boxes.append([x0, y0, x1, y1])
                     misc.imsave("roi" + str(n) + ".png", prew)
                     n = n + 1
-                
-        print('Face detection took {} s'.format(time.time() - start_time))
+
+        Logger.info('Face detection took {} s'.format(time.time() - start_time))
         nrof_faces = len(faces)
-        print('Detected {} faces'.format(nrof_faces))
+        Logger.info('Detected {} faces'.format(nrof_faces))
         if nrof_faces == 0:
             continue
 
@@ -354,17 +355,17 @@ def facedet_as_service():
             predictions = model.predict_proba(emb_array)
             best_class_indices = np.argmax(predictions, axis=1)
             best_class_probabilities = predictions[np.arange(len(best_class_indices)), best_class_indices]
-                
-            print('Face classification took {} s'.format(time.time() - start_time))
+
+            Logger.info('Face classification took {} s'.format(time.time() - start_time))
 
             with open('facedet_front.txt','wt') as outfile:
                 for i in range(len(best_class_indices)):
-                    # print('%4d  %s: %.3f' % (i, class_names[best_class_indices[i]], best_class_probabilities[i]))
+                    # Logger.debug('%4d  %s: %.3f' % (i, class_names[best_class_indices[i]], best_class_probabilities[i]))
                     outfile.write(class_names[best_class_indices[i]] + "\n")
                 outfile.close()
 
     sock.close()
-    print("Service stopped.")
+    Logger.info("Service stopped.")
 
 def facedet_objdet_as_service():
     Logger.info("Running face and object detection as a service...")
@@ -460,10 +461,10 @@ def facedet_objdet_as_service():
                     conn.send("Error with integer values: " + str(e))
                     continue
                 conn.send("OK".encode())
-                print("Request to perform training on {} aliases with {} images each.".format(no_objects, no_images))
+                Logger.info("Request to perform training on {} aliases with {} images each.".format(no_objects, no_images))
                 for i in range(no_objects):
                     alias = conn.recv(32).decode().replace(" ","_")
-                    print("Alias: " + alias)
+                    Logger.debug("Alias: " + alias)
                     folder = PATH_TO_LFW_IMAGES + "/" + alias
                     if os.path.exists(folder):
                         os.rmdir(folder)
@@ -477,8 +478,8 @@ def facedet_objdet_as_service():
                         
                 dataset = facenet.get_dataset(PATH_TO_LFW_IMAGES)
                 paths, labels = facenet.get_image_paths_and_labels(dataset)
-                print('Number of classes: %d' % len(dataset))
-                print('Number of images: %d' % len(paths))
+                Logger.debug('Number of classes: %d' % len(dataset))
+                Logger.debug('Number of images: %d' % len(paths))
                 nrof_images = len(paths)
                 nrof_batches_per_epoch = int(math.ceil(1.0 * nrof_images / TRAIN_BATCH_SIZE))
                 emb_array = np.zeros((nrof_images, embedding_size))
@@ -495,7 +496,7 @@ def facedet_objdet_as_service():
                 class_names = [ cls.name.replace('_', ' ') for cls in dataset]
                 with open(PATH_TO_FACENET_CLASSIFIER, 'wb') as outfile:
                     pickle.dump((model, class_names), outfile)
-                print('Saved classifier model to file "%s"' % PATH_TO_FACENET_CLASSIFIER)
+                Logger.debug('Saved classifier model to file "%s"' % PATH_TO_FACENET_CLASSIFIER)
                 
             elif operation == "objdet" or operation == "facerec":
                 conn.send("OK".encode())
@@ -504,9 +505,9 @@ def facedet_objdet_as_service():
             else:
                 conn.send("No such operation".encode())
         except Exception as e:
-            print(str(e))
-        print('Images download took {} s'.format(time.time() - start_time))
-        print('Received {} images'.format(len(img_data)))        
+            Logger.error(str(e))
+        Logger.info('Images download took {} s'.format(time.time() - start_time))
+        Logger.info('Received {} images'.format(len(img_data)))
 
         send_buf = ""
         start_time = time.time()
@@ -517,7 +518,7 @@ def facedet_objdet_as_service():
                 continue 
             img = cv2.imdecode(np.asarray(bytearray(img_buf), dtype=np.uint8), 0)
             if img.ndim < 2:
-                print('Unable to align image')
+                Logger.error('Unable to align image')
                 continue
             elif img.ndim == 2:
                 img = facenet.to_rgb(img)
@@ -581,13 +582,14 @@ def facedet_objdet_as_service():
                                                              facenet_class_names[best_class_indices[i]],
                                                              best_class_probabilities[i])
         
-        send_buf = send_buf + "END"            
-        print('Operation {} took {} s'.format(operation, time.time() - start_time))
-        print('Sending: ' + send_buf)
+        send_buf = send_buf + "END"
+        Logger.info('Operation {} took {} s'.format(operation, time.time() - start_time))
+        Logger.debug('Sending: ' + send_buf)
         conn.send(str.encode(send_buf))
 
     sock.close()
-    print("Service stopped.")
+    Logger.info("Service stopped.")
+
 
 '''Detect faces on all images from all cameras'''
 def facedet_bulk(args):
@@ -651,8 +653,8 @@ def facedet_bulk(args):
                                                                 onet,
                                                                 threshold,
                                                                 factor)
-            
-            print("Total size of face detection list: " + str(len(bounding_boxes)))
+
+            Logger.info("Total size of face detection list: " + str(len(bounding_boxes)))
 
             faces = []
             boxes = []
@@ -680,7 +682,7 @@ def facedet_bulk(args):
             # 2. Recognize Face
   
             # Load the model
-            print('Loading feature extraction model')
+            Logger.info('Loading feature extraction model')
             facenet.load_model(PATH_TO_FACENET_MODEL)
             
             # Get input and output tensors
@@ -691,7 +693,7 @@ def facedet_bulk(args):
             emb_array = np.zeros((len(faces), embedding_size))
             
             # Run forward pass to calculate embeddings
-            print('Calculating features for images')
+            Logger.info('Calculating features for images')
             feed_dict = { images_placeholder:faces, phase_train_placeholder:False }
             emb_array[:,:] = sess.run(embeddings, feed_dict=feed_dict)
             with open(PATH_TO_FACENET_CLASSIFIER, 'rb') as infile:
@@ -705,14 +707,15 @@ def facedet_bulk(args):
                 with open(faces_file,'wt') as outfile:                    
                     outfile.write("I can see ")
                     for i in range(len(best_class_indices)):
-                    # print('%4d  %s %s: %.3f' % (i, class_names[best_class_indices[i]], img_loc[img_index[i]], best_class_probabilities[i]))
+                    # Logger.debug('%4d  %s %s: %.3f' % (i, class_names[best_class_indices[i]], img_loc[img_index[i]], best_class_probabilities[i]))
                         name = class_names[best_class_indices[i]]
                         location = img_loc[img_index[i]]
                         outfile.write(name + " at " + location + " and ")
                     outfile.write(" that's it")
                     outfile.close()
 
-    print('Face detection took {} s'.format(time.time() - start_time))
+    Logger.info('Face detection took {} s'.format(time.time() - start_time))
+
 
 if __name__ == '__main__':
     if len(sys.argv) > 1:

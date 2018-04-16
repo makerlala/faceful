@@ -94,7 +94,7 @@ class DataBase:
 
     '''Add new user or update existing user'''
     def set_user(self, name, passwd):
-        if self.get_login(name):
+        if self.get_password(name):
             # user exists, just update password
             try:
                 self.cursor.execute('''UPDATE users SET passwd = ? WHERE name = ?''', (name, passwd,))
@@ -142,12 +142,12 @@ class DataBase:
             self.cursor.execute('''SELECT * FROM photos WHERE id = ?''', (photo_id,))
             rows = self.cursor.fetchall()
             if len(rows) > 1:
-                print("Error: too many ids for the same path!")
+                Logger.error("Too many ids for the same path!")
             elif len(rows) == 0:
                 return None
             return rows[0]
         except Exception as e:
-            print(e)
+            Logger.error(e)
         return None
     
     def get_photos_with_alias(self, alias):
@@ -156,7 +156,7 @@ class DataBase:
             rows = self.cursor.fetchall()
             return rows
         except Exception as e:
-            print(e)
+            Logger.error(e)
         return []
     
     def get_photos_with_label(self, label):
@@ -165,7 +165,7 @@ class DataBase:
             rows = self.cursor.fetchall()
             return rows
         except Exception as e:
-            print(e)
+            Logger.error(e)
         return []
     
     '''
@@ -187,7 +187,7 @@ class DataBase:
                     data[row[label_index]] = [row]
             return data
         except Exception as e:
-            print(e)
+            Logger.error(e)
         return {}
     
     def get_boxes_with_faces(self):
@@ -195,7 +195,7 @@ class DataBase:
             self.cursor.execute('''SELECT * FROM boxes WHERE alias = "face" AND learned = 0''')
             return self.cursor.fetchall()
         except Exception as e:
-            print(e)
+            Logger.error(e)
         return []
 
     def insert_box(self, photo_id, x0, y0, x1, y1, label):
@@ -204,7 +204,7 @@ class DataBase:
             VALUES(?, ?, ?, ?, ?, ?, ?)''', (photo_id, x0, y0, x1, y1, label, ""))
             self.db.commit()
         except Exception as e:
-            print(e)
+            Logger.error(e)
             
     def get_boxes(self, photo_id):
         try:
@@ -212,7 +212,7 @@ class DataBase:
             rows = self.cursor.fetchall()
             return rows
         except Exception as e:
-            print(e)
+            Logger.error(e)
         return []
     
     def get_settings(self):
@@ -221,7 +221,7 @@ class DataBase:
             rows = self.cursor.fetchall()
             return rows
         except Exception as e:
-            print(e)
+            Logger.error(e)
         return []
     
     def update_box_alias(self, boxid, alias):
@@ -230,7 +230,7 @@ class DataBase:
             self.cursor.execute('''UPDATE boxes SET learned = 2 WHERE id = ?''', (boxid,))
             self.db.commit()
         except Exception as e:
-            print(e)
+            Logger.error(e)
 
     def get_story(self, photo_id):
         try:
@@ -238,7 +238,7 @@ class DataBase:
             rows = self.cursor.fetchall()
             return rows[0]
         except Exception as e:
-            print(e)
+            Logger.error(e)
         return None
 
     def add_story(self, photo_id, story_text):
@@ -248,13 +248,13 @@ class DataBase:
                 self.cursor.execute('''UPDATE stories SET story = ? WHERE photoid = ?''', (story_text, photo_id,))
                 self.db.commit()
             except Exception as e:
-                print(e)
+                Logger.error(e)
         else:
             try:
                 self.cursor.execute('''INSERT INTO stories(photoid, story) VALUES(?,?)''', (photo_id, story_text))
                 self.db.commit()
             except Exception as e:
-                print(e)
+                Logger.error(e)
             story = self.get_story(photo_id)
         # return id
         return story[0]

@@ -58,6 +58,14 @@ function showAi() {
 	window.location = '/ai';
 }
 
+function startDetection() {
+	$.ajax({
+		type: "POST",
+		url : "/detect",
+		data : {},
+	});
+}
+
 function startTraining() {
 	$.ajax({
 		type: "POST",

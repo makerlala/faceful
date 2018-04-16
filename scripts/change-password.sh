@@ -23,24 +23,6 @@ PIP="pip3"
 VENV="env3"
 PYTHON_VERSION=`$PYTHON -V 2>&1`
 
-# by default use GPU
-USE_GPU=1
-TENSORFLOW_MODULE="tensorflow-gpu"
-
-echo "Using $PYTHON_VERSION"
-if [ $# -gt 0 ] && [ $1 == "-h" ]; then
-	echo "Usage: $0 [-cpu (CPU-only) | -h (help)]"
-	exit
-fi
-if [ $# -gt 0 ] && [ $1 == "-cpu" ]; then
-	USE_GPU=0
-	TENSORFLOW_MODULE="tensorflow"
-	echo "Using tensorflow CPU only"
-fi
-
-# Cuda libs
-export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
-
 # Python virtual environment
 cd ../..
 if [ "$PYTHON" == "python3" ]; then
@@ -49,6 +31,9 @@ else
 	virtualenv $VENV
 fi
 source $VENV/bin/activate
+$PIP install --upgrade flask
+
 cd faceful
-echo "Working in folder `pwd`"
-$PYTHON src/facedet.py -o
+$PYTHON src/change-password.py
+
+

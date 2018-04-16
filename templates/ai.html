@@ -42,6 +42,13 @@
 					<p><a href="/search?query={{ key }}">{{ key }}</a>: {{ marked_objects[key]|length }} photos</p>
 				{% endfor %}
 				</div>
+				<div>
+					{% if detection_in_progress %}
+						<button class="redbutton" onclick="startDetection()" disabled="disabled">Start Object Detection</button>
+					{% else %}
+						<button class="redbutton" onclick="startDetection()">Start Object Detection</button>
+					{% endif %}
+				</div>
 				<header>
 					<h2>Face Recognition Training</h2>
 				</header>
