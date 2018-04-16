@@ -458,14 +458,16 @@ def detail():
     
     db = DataBase()
     boxes = db.get_boxes(entity.db_id)
+    story = db.get_story(entity.db_id)
     db.close()
     Logger.debug("Detail boxes: " + str(boxes))
     photopath = get_photo(entity.path, entity.db_id, wh, ww, boxes, with_labels=True)
+
     return render_template('detail.html', 
                            entity=entity,
                            width=ww,
                            imgpath=photopath,
-                           stories=[],
+                           story=story,
                            boxes=boxes)
 
 
@@ -585,7 +587,25 @@ def deletecache():
         filepath = os.path.join(path,file)
         if os.path.isfile(filepath) and file.startswith("photo"):
             os.remove(filepath)
-            
+
+
+@app.route('/addstory', methods=['POST'])
+def add_story():
+    if not check_session_login():
+        return redirect("/login")
+
+    photoid = request.form.get("pathid")
+    story_text = request.form.get("story_text")
+
+    if not photoid or not story_text:
+        Logger.error("Invalid addstory request")
+        return redirect("/")
+
+    db = DataBase()
+    db.add_story(photoid, story_text)
+
+    return redirect("/detail?path_id=" + photoid)
+
 
 @app.route('/settings', methods=['GET'])
 def settings():

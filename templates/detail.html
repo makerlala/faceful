@@ -57,17 +57,12 @@
 				<header>
 					<h2>Story</h2>
 				</header>
-				{% if stories.count(stories) == 0 %}
 				<form action="/addstory" method="post">
+					<input type="hidden" name="pathid" value="{{ entity.db_id }}" />
 					<textarea rows="8" cols="40" placeholder="Put your story here."
-						name="story_text"></textarea>
+						name="story_text">{{ story }}</textarea>
 					<input class="redbutton" type="submit" value="Add story" />
 				</form>
-				{% else %} 
-				{% for story in stories %}
-					<p>{{ story.content }}</p>
-				{% endfor %} 
-				{% endif %}
 			</div>
 		</div>
 		{% if entity.prev_id != -1 %} <a
