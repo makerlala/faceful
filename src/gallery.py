@@ -376,13 +376,15 @@ def index():
         path_id = int(path_id)
         entity = entity_db_id_map[path_id]
         if entity is not None:
-            session['lastIndex' + str(path_id)] = settings.max_photo_fetch
-            return render_template('index.html', 
+            session['last_index' + str(path_id)] = settings.max_photo_fetch
+            return render_template('index.html',
+                                   entity_name=entity.name,
                                    entities=entity.children,
                                    path_id=path_id,
                                    maxfetch=settings.max_photo_fetch)
             
-    return render_template('index.html', 
+    return render_template('index.html',
+                           entity_name="Home",
                            entities=root_entity.children,
                            path_id=-1,
                            maxfetch=settings.max_photo_fetch)
@@ -398,11 +400,12 @@ def getmorephotos():
     global entity_db_id_map
 
     path_id = request.form.get('path_id')
+    Logger.debug("Path id in getmorephotos: " + path_id)
     if path_id is not None:
         path_id = int(path_id)
         entity = entity_db_id_map[path_id]
         if entity is None:
-            return '';
+            return ''
         last_index_key = 'last_index' + str(path_id)
         if last_index_key in session:
             last_index = session[last_index_key]
@@ -411,6 +414,8 @@ def getmorephotos():
         data = ""
         next_index = min(last_index + settings.max_photo_fetch, len(entity.children))
         session[last_index_key] = next_index
+        if (next_index <= last_index):
+            return ''
         for i in range(last_index, next_index):
             child = entity.children[i]
             if child.is_video:
@@ -420,6 +425,7 @@ def getmorephotos():
                 data = data + '<div class="image fit"><a href="/detail?path_id=' + str(child.db_id) + \
                        '"><img src="/thumbnail?path_id=' + str(child.db_id) + '&w=400" alt="' + child.name + \
                        '" /></a></div>'
+        Logger.debug("Last index and next index n getmorephotos: " + str(last_index) + " " + str(next_index))
         return data
             
 

@@ -66,6 +66,9 @@ $(document).ready(function() {
 					<input class="redbutton" type="submit" value="Search in photos" />
 				</form>
 			</div>
+			<div class="title-box">
+				<h1><b>{{ entity_name }}</b><i>({{ entities|length }} files)</i></h1>
+			</div>
 			<div class="columns">
 				{% if entities|length == 0 %}
 				<h1>No photos found!</h1>
@@ -73,7 +76,9 @@ $(document).ready(function() {
 				{% for entity in entities %}
 				{% if entity.is_dir %}
 				<div class="folder">
-					<a href="/?path_id={{ entity.db_id }}"><img width=24 src="static/img/icon_folder_red_32px.png" />{{ entity.name }}</a>
+					<img src="static/img/icon_folder_fill_orange_128px.png" />
+					<br/>
+					<a href="/?path_id={{ entity.db_id }}">{{ entity.name }}</a>
 				</div>
 				{% endif %} 
 				{% endfor %} 

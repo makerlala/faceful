@@ -97,7 +97,7 @@ class DataBase:
         if self.get_password(name):
             # user exists, just update password
             try:
-                self.cursor.execute('''UPDATE users SET passwd = ? WHERE name = ?''', (name, passwd,))
+                self.cursor.execute('''UPDATE users SET passwd = ? WHERE name = ?''', (passwd, name,))
                 self.db.commit()
             except Exception as e:
                 Logger.error("Exception in updating user's password: " + str(e))

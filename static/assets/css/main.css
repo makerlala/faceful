@@ -318,6 +318,23 @@
 	    text-align: center;
 	}
 
+	.title-box {
+	    position: relative;
+	    left: 50%;
+	    margin-left: -50%;
+	    width: 100%;
+	    text-align: center;
+	    margin-bottom: 25px;
+	}
+
+	.title-box h1 {
+	    font-size: 1.6em;
+	}
+
+	.title-box b {
+	    font-weight: bold;
+	}
+
 /* Button */
 
 	input[type="submit"],
@@ -948,6 +965,13 @@
 			display: block;
 			margin: 0 0 2em 0;
 			width: 100%;
+			text-align: center;
+		}
+
+		.columns .folder a {
+		    font-size: 1.2em;
+		    font-weight: 800;
+		    text-decoration: none;
 		}
 
 			.columns .image img {
