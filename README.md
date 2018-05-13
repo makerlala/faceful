@@ -1,7 +1,7 @@
 # faceful
 A Photo Gallery with Face Recognition
 
-![Alt text](https://drive.google.com/open?id=1oXemynoF4Z_kMwxoh1Er0a3M33W-Dwz4?raw=true "Home")
+![Screenshot](https://drive.google.com/open?id=1oXemynoF4Z_kMwxoh1Er0a3M33W-Dwz4)
 
 ## Get started
 
