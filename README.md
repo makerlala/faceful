@@ -1,7 +1,7 @@
 # faceful
 A Photo Gallery with Face Recognition
 
-## Warning: this is an alpha release. Please check for the latest release on our github page.
+![Alt text](https://drive.google.com/open?id=1oXemynoF4Z_kMwxoh1Er0a3M33W-Dwz4?raw=true "Home")
 
 ## Get started
 
@@ -105,5 +105,9 @@ Enjoy!
 
 ## Credits
 Webpage template Radius is created by TEMPLATED (https://templated.co/radius) and released for free under the Creative Commons Attribution 3.0 license (https://templated.co/license)
+
+Most of the icons are <a href='https://www.freepik.com/free-vector/100-universal-icons_993473.htm'>Designed by Freepik</a>
+(Folder icon made by made by <a href="https://www.flaticon.com/authors/good-ware" title="Good Ware">Good Ware</a> from <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a> is licensed by <a href="http://creativecommons.org/licenses/by/3.0/" title="Creative Commons BY 3.0" target="_blank">CC 3.0 BY</a></div>)
+
 
 Parts of the code are inspired or copied from facenet project  by David Sandberg which is licensed under MIT licence (see https://github.com/davidsandberg/facenet).
