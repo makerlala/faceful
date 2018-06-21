@@ -39,16 +39,22 @@ import cv2
 from pixels import pixels
 # from src/networking import Connection
 
-led1_port = 26
-led2_port = 6
-led_gnd_port = 13
-motion_port = 16
-pwm_port = 12
+led1_pin = 26
+led2_pin = 6
+led_gnd_pin = 13
+motion_pin = 16
+pwm_pin = 12
 
 GPIO.setmode(GPIO.BCM)
-GPIO.setup(led1_port, GPIO.OUT)
-GPIO.setup(led2_port, GPIO.OUT)
-GPIO.setup(led_gnd_port, GPIO.OUT)
+GPIO.setup(led1_pin, GPIO.OUT)
+GPIO.setup(led2_pin, GPIO.OUT)
+GPIO.setup(led_gnd_pin, GPIO.OUT)
+GPIO.setup(motion_pin, GPIO.IN)
+GPIO.setup(pwm_pin, GPIO.OUT)
+
+# setup PWM 50Hz
+pwm = GPIO.PWM(pwm_pin, 50)
+pwm.start(0)
 
 cam_flag = True
 camera = PiCamera()
@@ -57,6 +63,14 @@ camera.rotation = 180
 faceCascade = cv2.CascadeClassifier('haarcascades/haarcascade_frontalface_default.xml')
 eyeCascade = cv2.CascadeClassifier('haarcascades/haarcascade_eye.xml')
 smileCascade = cv2.CascadeClassifier('haarcascades/haarcascade_smile.xml')
+
+def set_angle(angle):
+	duty = angle / 18 + 2
+	GPIO.output(pwm_pin, True)
+	pwm.ChangeDutyCycle(duty)
+	time.sleep(1)
+	GPIO.output(pwm_pin, False)
+	pwm.ChangeDutyCycle(0)
 
 def process_event(event, doa):
     """Pretty prints events.
@@ -67,16 +81,23 @@ def process_event(event, doa):
     """
     global cam_flag
 
+    set_angle(90)
+
     if event.type == EventType.ON_NO_RESPONSE:
         cam_flag = True
 
     if event.type == EventType.ON_CONVERSATION_TURN_STARTED:
         print()
-        GPIO.output(led_gnd_port,True)
+        GPIO.output(led_gnd_pin,True)
         if not doa is None: 
             direction = doa.get_direction()
             print('detected voice at direction {}'.format(direction))
             pixels.wakeup(direction)
+            if direction > 270 or direction < 90:
+                set_angle(20)
+            else:
+                set_angle(175)
+
         if cam_flag:
             tstamp = str(int(time.time()))
             imgfile = "one-shot-" + tstamp + ".jpg"
@@ -131,7 +152,7 @@ def process_event(event, doa):
             (event.type == EventType.ON_CONVERSATION_TURN_TIMEOUT) or
             (event.type == EventType.ON_NO_RESPONSE)):
         print()
-        GPIO.output(led_gnd_port,False)
+        GPIO.output(led_gnd_pin,False)
         pixels.off()
 
 def main():
@@ -144,9 +165,9 @@ def main():
     src.recursive_start()
 
     # GPIO
-    GPIO.output(led_gnd_port,False)
-    GPIO.output(led1_port,True)
-    GPIO.output(led2_port,True)   
+    GPIO.output(led_gnd_pin,False)
+    GPIO.output(led1_pin,True)
+    GPIO.output(led2_pin,True)   
 
     # Google Assistant
     parser = argparse.ArgumentParser(
